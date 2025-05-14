@@ -15,7 +15,7 @@ def create_app(config_object=None):
     # Context processor for template variables
     @app.context_processor
     def inject_year():
-        from datetime import datetime, UTC
-        return dict(current_year=datetime.now(UTC).year)
+        from datetime import datetime, timezone
+        return dict(current_year=datetime.now(timezone.utc).year)
 
     return app
