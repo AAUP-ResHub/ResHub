@@ -1,6 +1,5 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
+from extensions import db, migrate
 from os import path
 
 app = Flask(__name__)
@@ -8,10 +7,11 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///project.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'dev'  # Change this in production
 
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
+# Initialize extensions
+db.init_app(app)
+migrate.init_app(app, db)
 
-# Import models after db initialization to avoid circular imports
+# Import models after db initialization
 from models import User, Role
 
 @app.route('/')
