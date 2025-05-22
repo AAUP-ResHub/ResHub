@@ -1,21 +1,38 @@
 from flask import Flask
+from flask_cors import CORS
+from flask_login import LoginManager
 
+login_manager = LoginManager()
 
-def create_app(config_object=None):
+def create_app():
     app = Flask(__name__)
-    if config_object:
-        app.config.update(config_object)
-
+    CORS(app)
+    
+    # Load configuration
+    app.config.from_pyfile('config.py', silent=True)
+    
+    # Initialize Flask-Login
+    login_manager.init_app(app)
+    login_manager.login_view = 'auth.login'
+    login_manager.login_message = 'Please log in to access this page.'
+    login_manager.login_message_category = 'info'
+    
+    @login_manager.user_loader
+    def load_user(user_id):
+        from app.models import User
+        return User.get_by_id(user_id)
+    
     # Register blueprints
-    from .main import main_bp
+    from app.routes import main_bp
+    from app.auth import auth_bp
+    
     app.register_blueprint(main_bp)
-
-    # TODO: Person-1 will add auth blueprint here
-
+    app.register_blueprint(auth_bp)
+    
     # Context processor for template variables
     @app.context_processor
     def inject_year():
         from datetime import datetime, timezone
         return dict(current_year=datetime.now(timezone.utc).year)
-
+    
     return app
