@@ -1,9 +1,9 @@
 from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
-db = SQLAlchemy() # This instance will be initialized in app/__init__.py
+# Import db from extensions to avoid circular imports
+from app.extensions import db
 
 # --- User Hierarchy ---
 class User(db.Model, UserMixin):

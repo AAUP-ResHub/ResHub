@@ -1,32 +1,20 @@
 import os
 from flask import Flask
-from flask_cors import CORS
-from flask_login import LoginManager
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 
-# Create extension instances
-db = SQLAlchemy()
-login_manager = LoginManager()
+# Import extensions
+from app.extensions import db, migrate, login_manager, cors
 
 def create_app():
     app = Flask(__name__)
-    CORS(app)
     
     # Load configuration
     app.config.from_pyfile('config.py', silent=True)
     
-    # Initialize database
+    # Initialize extensions
     db.init_app(app)
-    
-    # Initialize migration
-    migrate = Migrate(app, db)
-    
-    # Initialize Flask-Login
+    cors.init_app(app)
+    migrate.init_app(app, db)
     login_manager.init_app(app)
-    login_manager.login_view = 'auth.login'
-    login_manager.login_message = 'Please log in to access this page.'
-    login_manager.login_message_category = 'info'
     
     @login_manager.user_loader
     def load_user(user_id):
