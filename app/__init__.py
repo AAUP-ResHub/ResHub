@@ -2,7 +2,8 @@ import os
 from flask import Flask
 
 # Import extensions
-from app.extensions import db, migrate, login_manager, cors
+from app.extensions import db, login_manager, cors
+from flask_migrate import Migrate
 
 def create_app():
     app = Flask(__name__)
@@ -13,7 +14,9 @@ def create_app():
     # Initialize extensions
     db.init_app(app)
     cors.init_app(app)
-    migrate.init_app(app, db)
+    
+    # Initialize migrations
+    migrate = Migrate(app, db)
     login_manager.init_app(app)
     
     @login_manager.user_loader

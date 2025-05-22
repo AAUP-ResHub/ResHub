@@ -9,7 +9,6 @@ from flask_cors import CORS
 
 # Create extension objects
 db = SQLAlchemy()
-migrate = Migrate()
 login_manager = LoginManager()
 cors = CORS()
 
