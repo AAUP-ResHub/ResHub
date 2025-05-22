@@ -7,7 +7,6 @@ from flask_migrate import Migrate
 
 # Create extension instances
 db = SQLAlchemy()
-migrate = Migrate()
 login_manager = LoginManager()
 
 def create_app():
@@ -18,9 +17,10 @@ def create_app():
     app.config.from_pyfile('config.py', silent=True)
     
     # Initialize database
-    from app.models import db
     db.init_app(app)
-    migrate.init_app(app, db)
+    
+    # Initialize migration
+    migrate = Migrate(app, db)
     
     # Initialize Flask-Login
     login_manager.init_app(app)
