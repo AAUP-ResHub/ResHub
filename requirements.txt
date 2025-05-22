@@ -1,7 +1,0 @@
-Flask==2.3.3
-pytest==7.4.0
-flake8==6.1.0
-# These will be needed later by Person-1 for auth implementation
-Flask-SQLAlchemy==3.0.5
-Flask-Login==0.6.2
-Flask-Migrate==4.0.4
