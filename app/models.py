@@ -1,17 +1,53 @@
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
 
-db = SQLAlchemy() # This instance will be initialized in app.py
+db = SQLAlchemy() # This instance will be initialized in app/__init__.py
 
 # --- User Hierarchy ---
-class User(db.Model):
+class User(db.Model, UserMixin):
     __tablename__ = 'users'
     user_id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False) # Store hashes, not plain text
     email = db.Column(db.String(120), unique=True, nullable=False)
     user_type = db.Column(db.String(50), nullable=False) # e.g., 'admin', 'registered'
-
+    
+    def get_id(self):
+        # Flask-Login requires this method
+        return str(self.user_id)
+    
+    @staticmethod
+    def get_by_id(user_id):
+        # Required by Person 1's auth implementation
+        return User.query.filter_by(user_id=int(user_id)).first()
+    
+    @staticmethod
+    def get_by_username(username):
+        # Required by Person 1's auth implementation
+        return User.query.filter_by(username=username).first()
+    
+    @staticmethod
+    def get_by_email(email):
+        # Required by Person 1's auth implementation
+        return User.query.filter_by(email=email).first()
+    
+    @staticmethod
+    def create_user(username, email, password):
+        # Required by Person 1's auth implementation
+        user = User(username=username, 
+                  email=email, 
+                  password_hash=generate_password_hash(password),
+                  user_type='registered')
+        db.session.add(user)
+        db.session.commit()
+        return user
+    
+    def check_password(self, password):
+        # Used by Person 1's auth implementation
+        return check_password_hash(self.password_hash, password)
+        
     def __repr__(self):
         return f'<User {self.username}>'
 

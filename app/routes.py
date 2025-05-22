@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, jsonify
 
+# Rename blueprint to match what auth.py expects
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')

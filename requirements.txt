@@ -1,4 +1,5 @@
 Flask==2.3.3
+Werkzeug==2.3.7  # Pinned for Flask-Login compatibility
 pytest==7.4.0
 flake8==6.1.0
 Flask-CORS==4.0.0
