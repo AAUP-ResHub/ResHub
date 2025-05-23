@@ -10,9 +10,9 @@ class User(db.Model, UserMixin):
     __tablename__ = 'users'
     user_id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False) # Store hashes, not plain text
+    password_hash = db.Column(db.String(256), nullable=False)  # Store hashes, not plain text
     email = db.Column(db.String(120), unique=True, nullable=False)
-    user_type = db.Column(db.String(50), nullable=False) # e.g., 'admin', 'registered'
+    user_type = db.Column(db.String(50), nullable=False)  # e.g., 'admin', 'registered'
     
     def get_id(self):
         # Flask-Login requires this method
@@ -47,7 +47,7 @@ class User(db.Model, UserMixin):
     def check_password(self, password):
         # Used by Person 1's auth implementation
         return check_password_hash(self.password_hash, password)
-        
+
     def __repr__(self):
         return f'<User {self.username}>'
 
@@ -56,7 +56,7 @@ class Admin(db.Model):
     admin_id = db.Column(db.Integer, primary_key=True)
     # Foreign Key to link to the User table
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False, unique=True)
-
+    
     # Relationship to User (one-to-one)
     user = db.relationship('User', backref=db.backref('admin_profile', uselist=False))
 
@@ -69,8 +69,8 @@ class RegisteredUser(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False, unique=True)
     first_name = db.Column(db.String(100))
     last_name = db.Column(db.String(100))
-    profile_data = db.Column(db.Text) # Semantic graph or personal info
-    research_stats = db.Column(db.Text) # Additional user analytics
+    profile_data = db.Column(db.Text)  # Semantic graph or personal info
+    research_stats = db.Column(db.Text)  # Additional user analytics
 
     # Relationship to User (one-to-one)
     user = db.relationship('User', backref=db.backref('registered_profile', uselist=False))
@@ -102,11 +102,41 @@ class PremiumUser(db.Model):
         return f'<PremiumUser ID: {self.premium_user_id}, RegisteredUser ID: {self.registered_user_id}>'
 
 # --- Content and Interaction Entities ---
+class ResearchPaper(db.Model):
+    __tablename__ = 'research_papers'
+    paper_id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    abstract = db.Column(db.Text)
+    content = db.Column(db.Text)  # Full content or link to it
+    publish_date = db.Column(db.Date) 
+    
+    owner_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)
+    
+    # One-to-one relationship with PaperMetrics
+    metrics = db.relationship('PaperMetrics', backref='paper', uselist=False, cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f'<ResearchPaper {self.paper_id}: {self.title[:50]}>'
+
+class PaperMetrics(db.Model):
+    __tablename__ = 'paper_metrics'
+    metric_id = db.Column(db.Integer, primary_key=True)
+    # Foreign Key to link to the ResearchPaper table, ensuring one-to-one
+    paper_id = db.Column(db.Integer, db.ForeignKey('research_papers.paper_id'), nullable=False, unique=True) 
+    read_count = db.Column(db.Integer, default=0)
+    download_count = db.Column(db.Integer, default=0)
+    citation_count = db.Column(db.Integer, default=0)
+
+    def __repr__(self):
+        return f'<PaperMetrics for PaperID {self.paper_id}>'
+
 class SystemLog(db.Model):
     __tablename__ = 'system_logs'
     log_id = db.Column(db.Integer, primary_key=True)
     action = db.Column(db.Text, nullable=False)
     log_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    # Optional: If logs are tied to a specific user (e.g., admin performing action)
+    # performing_user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'))
 
     def __repr__(self):
         return f'<SystemLog {self.log_id}: {self.action[:50]}>'
@@ -123,33 +153,6 @@ class ForumPost(db.Model):
 
     def __repr__(self):
         return f'<ForumPost {self.post_id} by UserID {self.author_registered_user_id}>'
-
-class ResearchPaper(db.Model):
-    __tablename__ = 'research_papers'
-    paper_id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(255), nullable=False)
-    abstract = db.Column(db.Text)
-    content = db.Column(db.Text) # Full content or link to it
-    publish_date = db.Column(db.Date) # Using db.Date for just the date part
-    
-    owner_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)
-    
-    # One-to-one relationship with PaperMetrics
-    metrics = db.relationship('PaperMetrics', backref='paper', uselist=False, cascade="all, delete-orphan")
-
-    def __repr__(self):
-        return f'<ResearchPaper {self.paper_id}: {self.title[:50]}>'
-
-class PaperMetrics(db.Model):
-    __tablename__ = 'paper_metrics'
-    metric_id = db.Column(db.Integer, primary_key=True)
-    paper_id = db.Column(db.Integer, db.ForeignKey('research_papers.paper_id'), nullable=False, unique=True) # Ensures one-to-one
-    read_count = db.Column(db.Integer, default=0)
-    download_count = db.Column(db.Integer, default=0)
-    citation_count = db.Column(db.Integer, default=0)
-
-    def __repr__(self):
-        return f'<PaperMetrics for PaperID {self.paper_id}>'
 
 class Notification(db.Model):
     __tablename__ = 'notifications'
