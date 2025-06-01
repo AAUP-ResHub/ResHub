@@ -53,4 +53,4 @@ def results():
             # flash('Search encountered an error. Please try again.', 'danger')
     
     # Person 3 will create the 'search/results.html' template
-    return render_template('search/results.html', query=query_string, papers_with_highlights=papers_with_highlights)
+    return render_template('search(testing)/results.html', query=query_string, papers_with_highlights=papers_with_highlights)
