@@ -108,7 +108,9 @@ class ResearchPaper(db.Model):
     title = db.Column(db.String(255), nullable=False)
     abstract = db.Column(db.Text)
     content = db.Column(db.Text)  # Full content or link to it
-    publish_date = db.Column(db.Date) 
+    publish_date = db.Column(db.Date, default=datetime.utcnow)
+    file_path = db.Column(db.String(500))  # Path to the uploaded PDF file
+    keywords = db.Column(db.String(255))  # Optional keywords/tags
     
     owner_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)
     
@@ -141,6 +143,22 @@ class SystemLog(db.Model):
     def __repr__(self):
         return f'<SystemLog {self.log_id}: {self.action[:50]}>'
 
+class ForumTopic(db.Model):
+    __tablename__ = 'forum_topics'
+    topic_id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    
+    # Relationship to posts (one-to-many)
+    posts = db.relationship('ForumPost', backref='topic', lazy='dynamic', cascade="all, delete-orphan")
+    
+    # Relationship to creator
+    creator = db.relationship('RegisteredUser', backref=db.backref('topics_created', lazy='dynamic'))
+    
+    def __repr__(self):
+        return f'<ForumTopic {self.topic_id}: {self.title[:50]}>'    
+
 class ForumPost(db.Model):
     __tablename__ = 'forum_posts'
     post_id = db.Column(db.Integer, primary_key=True)
@@ -148,6 +166,8 @@ class ForumPost(db.Model):
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_pinned = db.Column(db.Boolean, default=False)
     is_offensive = db.Column(db.Boolean, default=False)
+    is_edited = db.Column(db.Boolean, default=False)
+    topic_id = db.Column(db.Integer, db.ForeignKey('forum_topics.topic_id'), nullable=False)
     
     author_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)
 

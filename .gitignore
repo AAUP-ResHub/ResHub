@@ -12,6 +12,14 @@ ENV/
 # Flask instance folder
 instance/
 
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploaded files
+app/static/uploads/
+
 # Distribution / packaging
 dist/
 build/
