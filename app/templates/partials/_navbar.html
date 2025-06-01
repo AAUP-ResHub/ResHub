@@ -10,13 +10,25 @@
           <a class="nav-link" href="/">Home</a>
         </li>
         <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('paper.index') }}">Papers</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('forum.index') }}">Forums</a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link" href="/about">About</a>
         </li>
-        <!-- Search -->
-        <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('search.results') }}">Search</a>
-      </li>
       </ul>
+      
+      <!-- Search Form -->
+      <form class="d-flex mx-auto" action="{{ url_for('search.results') }}" method="get">
+        <div class="input-group">
+          <input class="form-control" type="search" placeholder="Search papers..." name="q" aria-label="Search">
+          <button class="btn btn-outline-primary" type="submit">
+            <i class="bi bi-search"></i> Search
+          </button>
+        </div>
+      </form>
       <div class="d-flex">
         {% if current_user.is_authenticated %}
           <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-primary me-2">Dashboard</a>

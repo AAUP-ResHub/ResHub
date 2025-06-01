@@ -192,23 +192,12 @@ def user_papers(user_id):
 
 @paper_bp.route('/search')
 def search():
-    """Search for papers by keyword"""
+    """Redirect to the global search feature"""
     q = request.args.get('q', '')
-    page = request.args.get('page', 1, type=int)
     
+    # Redirect to the global search endpoint
     if q:
-        # Search in title, abstract, and keywords
-        papers = ResearchPaper.query.filter(
-            (ResearchPaper.title.ilike(f'%{q}%')) |
-            (ResearchPaper.abstract.ilike(f'%{q}%')) |
-            (ResearchPaper.keywords.ilike(f'%{q}%'))
-        ).order_by(desc(ResearchPaper.publish_date)) \
-         .paginate(page=page, per_page=10, error_out=False)
+        return redirect(url_for('search.results', q=q))
     else:
-        papers = ResearchPaper.query.order_by(desc(ResearchPaper.publish_date)) \
-            .paginate(page=page, per_page=10, error_out=False)
-    
-    return render_template('papers/papers.html', 
-                           papers=papers, 
-                           title="Search Results",
-                           search_query=q)
+        # If no search query, just show all papers
+        return redirect(url_for('paper.index'))
