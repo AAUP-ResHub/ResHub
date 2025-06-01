@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Results for "{{ query }}"{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Search Results for "{{ query }}"</h2>
+    
+    <!-- Search form -->
+    <form action="{{ url_for('search.results') }}" method="get" class="mb-4">
+        <div class="input-group">
+            <input type="text" name="q" class="form-control" value="{{ query }}" placeholder="Search papers...">
+            <div class="input-group-append">
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Results count -->
+    <p class="text-muted">Found {{ papers_with_highlights|length }} results</p>
+    
+    <!-- Results list -->
+    {% if papers_with_highlights %}
+        <div class="list-group">
+            {% for paper_data in papers_with_highlights %}
+                <a href="{{ url_for('paper.paper_detail', paper_id=paper_data.paper.paper_id) }}" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">
+                            {% if paper_data.title_highlight %}
+                                {{ paper_data.title_highlight|safe }}
+                            {% else %}
+                                {{ paper_data.paper.title }}
+                            {% endif %}
+                        </h5>
+                        <small>{{ paper_data.paper.publish_date.strftime('%B %d, %Y') if paper_data.paper.publish_date else 'No date' }}</small>
+                    </div>
+                    
+                    <div class="mb-1">
+                        {% if paper_data.abstract_highlight %}
+                            {{ paper_data.abstract_highlight|safe }}
+                        {% else %}
+                            {{ paper_data.paper.abstract|truncate(200) if paper_data.paper.abstract else 'No abstract available' }}
+                        {% endif %}
+                    </div>
+                    
+                    {% if paper_data.paper.keywords %}
+                        <small class="text-muted">
+                            Keywords: {{ paper_data.paper.keywords }}
+                        </small>
+                    {% endif %}
+                    
+                    <div class="mt-2">
+                        <span class="badge bg-primary">
+                            <i class="fas fa-eye"></i> 
+                            {{ paper_data.paper.metrics.read_count if paper_data.paper.metrics else 0 }} reads
+                        </span>
+                        <span class="badge bg-success">
+                            <i class="fas fa-download"></i> 
+                            {{ paper_data.paper.metrics.download_count if paper_data.paper.metrics else 0 }} downloads
+                        </span>
+                        <span class="badge bg-info">
+                            <i class="fas fa-quote-right"></i> 
+                            {{ paper_data.paper.metrics.citation_count if paper_data.paper.metrics else 0 }} citations
+                        </span>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            No papers found for "{{ query }}". Try different search terms or <a href="{{ url_for('paper.index') }}">browse all papers</a>.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

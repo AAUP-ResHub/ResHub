@@ -24,14 +24,14 @@ with app.app_context():
     db.session.execute(text('''
         CREATE TRIGGER research_papers_ai AFTER INSERT ON research_papers BEGIN
             INSERT INTO research_papers_fts (paper_id, title, abstract)
-            VALUES (new.id, new.title, new.abstract);
+            VALUES (new.paper_id, new.title, new.abstract);
         END;
     '''))
     
     db.session.execute(text('DROP TRIGGER IF EXISTS research_papers_ad;'))
     db.session.execute(text('''
         CREATE TRIGGER research_papers_ad AFTER DELETE ON research_papers BEGIN
-            DELETE FROM research_papers_fts WHERE paper_id = old.id;
+            DELETE FROM research_papers_fts WHERE paper_id = old.paper_id;
         END;
     '''))
     
@@ -41,7 +41,7 @@ with app.app_context():
             UPDATE research_papers_fts SET 
                 title = new.title, 
                 abstract = new.abstract
-            WHERE paper_id = old.id; 
+            WHERE paper_id = old.paper_id; 
         END;
     '''))
     

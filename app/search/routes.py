@@ -35,7 +35,7 @@ def results():
                 # Fetch the actual ResearchPaper objects from the main table
                 # We need a way to map them back to the highlights and maintain order
                 if paper_ids_from_fts:
-                    papers_map = {p.id: p for p in ResearchPaper.query.filter(ResearchPaper.id.in_(paper_ids_from_fts)).all()}
+                    papers_map = {p.paper_id: p for p in ResearchPaper.query.filter(ResearchPaper.paper_id.in_(paper_ids_from_fts)).all()}
                     
                     for row_data in search_results_raw:
                         paper_obj = papers_map.get(row_data['paper_id'])
@@ -52,5 +52,4 @@ def results():
             # from flask import flash
             # flash('Search encountered an error. Please try again.', 'danger')
     
-    # Person 3 will create the 'search/results.html' template
-    return render_template('search(testing)/results.html', query=query_string, papers_with_highlights=papers_with_highlights)
+    return render_template('search/results.html', query=query_string, papers_with_highlights=papers_with_highlights)

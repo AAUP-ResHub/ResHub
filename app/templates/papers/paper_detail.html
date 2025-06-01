@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ paper.title }} | ResHub{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h1 class="card-title">{{ paper.title }}</h1>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="text-muted">
+                            {% if paper.publish_date %}
+                                Published on {{ paper.publish_date.strftime('%B %d, %Y') }}
+                            {% endif %}
+                            by <a href="{{ url_for('paper.user_papers', user_id=paper.owner_registered_user_id) }}">
+                                {{ paper.owner.user.username }}
+                            </a>
+                        </div>
+                        
+                        <div>
+                            {% if current_user.is_authenticated %}
+                                <form action="{{ url_for('paper.download_paper', paper_id=paper.paper_id) }}" method="POST" style="display: inline;">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-download"></i> Download PDF
+                                    </button>
+                                </form>
+                            {% else %}
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#loginModal">
+                                    <i class="bi bi-download"></i> Download PDF
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if paper.keywords %}
+                    <div class="mb-3">
+                        {% for keyword in paper.keywords.split(',') %}
+                            <a href="{{ url_for('paper.search', q=keyword.strip()) }}" class="badge bg-secondary text-decoration-none">
+                                {{ keyword.strip() }}
+                            </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <h5 class="card-subtitle mb-3">Abstract</h5>
+                    <div class="card-text mb-4">
+                        <p>{{ paper.abstract }}</p>
+                    </div>
+                    
+                    {% if current_user.is_authenticated %}
+                        {% if paper.file_path %}
+                        <h5 class="card-subtitle mb-3">Paper Preview</h5>
+                        <div class="ratio ratio-16x9 mt-3 mb-4">
+                            <iframe src="{{ url_for('static', filename=paper.file_path) }}" allowfullscreen></iframe>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center mb-3">
+                            <a href="{{ url_for('paper.view_in_browser', paper_id=paper.paper_id) }}" class="btn btn-outline-primary" target="_blank">
+                                <i class="bi bi-eye"></i> View in Full Screen
+                            </a>
+                            <form action="{{ url_for('paper.download_paper', paper_id=paper.paper_id) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-download"></i> Download PDF
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> 
+                            Please <a href="{{ url_for('auth.login') }}">log in</a> or 
+                            <a href="{{ url_for('auth.register') }}">register</a> to view the full paper.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Paper Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span><i class="bi bi-eye"></i> Views</span>
+                        <span class="badge bg-primary rounded-pill">{{ paper.metrics.read_count }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span><i class="bi bi-download"></i> Downloads</span>
+                        <span class="badge bg-primary rounded-pill">{{ paper.metrics.download_count }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-quote"></i> Citations</span>
+                        <span class="badge bg-primary rounded-pill">{{ paper.metrics.citation_count }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Author Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0">
+                            <img src="{{ url_for('static', filename='img/default-avatar.png') }}" class="rounded-circle" width="50" height="50" alt="Author avatar">
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="mb-0">{{ paper.owner.user.username }}</h5>
+                            {% if paper.owner.first_name and paper.owner.last_name %}
+                                <p class="text-muted mb-0">{{ paper.owner.first_name }} {{ paper.owner.last_name }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <a href="{{ url_for('paper.user_papers', user_id=paper.owner_registered_user_id) }}" class="btn btn-outline-primary btn-sm d-block">
+                        <i class="bi bi-journal-text"></i> View all papers by this author
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Login Modal -->
+<div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="loginModalLabel">Login Required</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>You need to be logged in to download papers. Please log in or create an account.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login</a>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-success">Register</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

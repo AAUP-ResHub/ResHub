@@ -27,9 +27,17 @@ def create_app():
     # Register blueprints
     from app.routes import main_bp
     from app.auth import auth_bp
+    from app.paper import paper_bp
+    from app.forum import forum_bp
+    from app.errors import errors_bp
+    from app.search import search_bp
     
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(paper_bp)
+    app.register_blueprint(forum_bp)
+    app.register_blueprint(errors_bp)
+    app.register_blueprint(search_bp, url_prefix='/search')
     
     # Context processor for template variables
     @app.context_processor
@@ -47,7 +55,4 @@ def create_app():
             init()
             migrate('Initial migration')
 
-    from .search import search_bp as search_blueprint
-    app.register_blueprint(search_blueprint, url_prefix='/search')         
-    
     return app

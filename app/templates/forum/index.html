@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Forums | ResHub{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Discussion Forums</h1>
+        
+        {% if current_user.is_authenticated %}
+        <a href="{{ url_for('forum.new_topic') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> New Topic
+        </a>
+        {% endif %}
+    </div>
+    
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <div class="card shadow">
+        <div class="list-group list-group-flush">
+            {% if topics.items %}
+                {% for topic in topics.items %}
+                <div class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <div>
+                            <h5 class="mb-1">
+                                <a href="{{ url_for('forum.topic_detail', topic_id=topic.topic_id) }}" class="text-decoration-none">
+                                    {{ topic.title }}
+                                </a>
+                            </h5>
+                            <small class="text-muted">
+                                Started by <a href="{{ url_for('forum.user_posts', user_id=topic.created_by) }}" class="text-decoration-none">
+                                    {{ topic.creator.user.username }}
+                                </a>
+                                on {{ topic.timestamp.strftime('%B %d, %Y at %H:%M') }}
+                            </small>
+                        </div>
+                        <small class="text-muted">
+                            {{ topic.posts.count() }} {% if topic.posts.count() == 1 %}post{% else %}posts{% endif %}
+                        </small>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="list-group-item text-center py-4">
+                    <p class="mb-2">No topics yet.</p>
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('forum.new_topic') }}" class="btn btn-sm btn-primary">
+                            Create the first topic
+                        </a>
+                    {% else %}
+                        <p>
+                            <a href="{{ url_for('auth.login') }}">Log in</a> or 
+                            <a href="{{ url_for('auth.register') }}">register</a> to create a topic.
+                        </p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Pagination -->
+    {% if topics.pages > 1 %}
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if topics.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('forum.index', page=topics.prev_num) }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&laquo;</span>
+                </li>
+            {% endif %}
+            
+            {% for page_num in topics.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                {% if page_num %}
+                    {% if page_num == topics.page %}
+                        <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('forum.index', page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                    {% endif %}
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if topics.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('forum.index', page=topics.next_num) }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&raquo;</span>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    
+    {% if not current_user.is_authenticated %}
+    <div class="alert alert-info mt-4">
+        <i class="bi bi-info-circle"></i> 
+        Please <a href="{{ url_for('auth.login') }}">log in</a> or 
+        <a href="{{ url_for('auth.register') }}">register</a> to participate in discussions.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
