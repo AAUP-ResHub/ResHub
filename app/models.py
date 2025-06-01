@@ -236,3 +236,57 @@ class RecommendationEngineConfig(db.Model):
 
     def __repr__(self):
         return f'<RecommendationEngineConfig {self.engine_id}: {self.algorithm_name}>'
+
+
+        #------------------------------------------------------------------------------
+# --- FTS5 Support for ResearchPaper (Manual Migration Required) ---
+# The following SQL DDL commands need to be executed within a new Alembic migration script
+# to create the FTS5 virtual table and synchronization triggers.
+
+"""
+# In a new Alembic migration script's upgrade() function:
+# from alembic import op
+# import sqlalchemy as sa  # Not strictly needed for op.execute
+
+def upgrade():
+    # Create the FTS5 virtual table for research papers
+    op.execute('''
+        CREATE VIRTUAL TABLE research_papers_fts USING fts5(
+            paper_id UNINDEXED,      -- Stores the original research_papers.id, not indexed by FTS
+            title,                   -- Column for full-text search on title
+            abstract,                -- Column for full-text search on abstract
+            tokenize = 'porter unicode61' -- Porter stemmer with Unicode support
+        );
+    ''')
+
+    # Database trigger: After a new ResearchPaper is inserted, add its data to the FTS table
+    op.execute('''
+        CREATE TRIGGER research_papers_ai AFTER INSERT ON research_papers BEGIN
+            INSERT INTO research_papers_fts (paper_id, title, abstract)
+            VALUES (new.id, new.title, new.abstract);
+        END;
+    ''')
+
+    # Database trigger: After a ResearchPaper is deleted, remove its entry from the FTS table
+    op.execute('''
+        CREATE TRIGGER research_papers_ad AFTER DELETE ON research_papers BEGIN
+            DELETE FROM research_papers_fts WHERE paper_id = old.id;
+        END;
+    ''')
+
+    # Database trigger: After a ResearchPaper is updated, update its entry in the FTS table
+    op.execute('''
+        CREATE TRIGGER research_papers_au AFTER UPDATE OF title, abstract ON research_papers BEGIN
+            UPDATE research_papers_fts SET 
+                title = new.title, 
+                abstract = new.abstract
+            WHERE paper_id = old.id; 
+        END;
+    ''')
+
+def downgrade():
+    op.execute('DROP TRIGGER IF EXISTS research_papers_au;')  # Drop in reverse order of creation
+    op.execute('DROP TRIGGER IF EXISTS research_papers_ad;')
+    op.execute('DROP TRIGGER IF EXISTS research_papers_ai;')
+    op.execute('DROP TABLE IF EXISTS research_papers_fts;')
+"""

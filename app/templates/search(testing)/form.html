@@ -1,0 +1,10 @@
+
+<!-- for testing -->
+<form action="{{ url_for('search.results') }}" method="get" class="search-form">
+    <div class="input-group">
+        <input type="text" name="q" class="form-control" placeholder="Search research papers..." value="{{ query or '' }}">
+        <div class="input-group-append">
+            <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+    </div>
+</form>

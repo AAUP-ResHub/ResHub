@@ -12,6 +12,10 @@
         <li class="nav-item">
           <a class="nav-link" href="/about">About</a>
         </li>
+        <!-- Search -->
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('search.results') }}">Search</a>
+      </li>
       </ul>
       <div class="d-flex">
         {% if current_user.is_authenticated %}
@@ -24,4 +28,5 @@
       </div>
     </div>
   </div>
+
 </nav>

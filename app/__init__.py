@@ -46,5 +46,8 @@ def create_app():
             from flask_migrate import init, migrate
             init()
             migrate('Initial migration')
+
+    from .search import search_bp as search_blueprint
+    app.register_blueprint(search_blueprint, url_prefix='/search')         
     
     return app
