@@ -1,9 +1,16 @@
 from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+import enum
 
 # Import db from extensions to avoid circular imports
 from app.extensions import db
+
+# --- Citation Styles ---
+class CitationStyle(enum.Enum):
+    APA = "APA"
+    MLA = "MLA"
+    IEEE = "IEEE"
 
 # --- User Hierarchy ---
 class User(db.Model, UserMixin):
@@ -111,6 +118,16 @@ class ResearchPaper(db.Model):
     publish_date = db.Column(db.Date, default=datetime.utcnow)
     file_path = db.Column(db.String(500))  # Path to the uploaded PDF file
     keywords = db.Column(db.String(255))  # Optional keywords/tags
+    
+    # Citation metadata fields
+    authors = db.Column(db.Text)  # Comma-separated list of authors
+    publication_year = db.Column(db.String(10))  # Publication year
+    journal = db.Column(db.String(255))  # Journal or conference name
+    volume = db.Column(db.String(50))  # Volume number
+    issue = db.Column(db.String(50))  # Issue number
+    pages = db.Column(db.String(50))  # Page range
+    publisher = db.Column(db.String(255))  # Publisher name
+    doi = db.Column(db.String(100))  # Digital Object Identifier
     
     owner_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)
     
@@ -235,6 +252,23 @@ class WorkspaceFile(db.Model):
 
     def __repr__(self):
         return f'<WorkspaceFile {self.file_id}: {self.filename}>'
+
+class Citation(db.Model):
+    __tablename__ = 'citations'
+    id = db.Column(db.Integer, primary_key=True)
+    paper_id = db.Column(db.Integer, db.ForeignKey('research_papers.paper_id'), nullable=False)
+    style = db.Column(db.Enum(CitationStyle), nullable=False)
+    bibtex_string = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    download_count = db.Column(db.Integer, default=0)
+    copy_count = db.Column(db.Integer, default=0)
+    
+    paper = db.relationship('ResearchPaper', backref=db.backref('citations', lazy='dynamic'))
+    
+    __table_args__ = (db.UniqueConstraint('paper_id', 'style', name='uix_citation_paper_style'),)
+    
+    def __repr__(self):
+        return f'<Citation {self.id}: {self.paper_id} - {self.style.value}>'
 
 class AIDataset(db.Model):
     __tablename__ = 'ai_datasets'
