@@ -34,11 +34,16 @@
                         
                         <div>
                             {% if current_user.is_authenticated %}
-                                <form action="{{ url_for('paper.download_paper', paper_id=paper.paper_id) }}" method="POST" style="display: inline;">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="bi bi-download"></i> Download PDF
+                                <div class="btn-group" role="group">
+                                    <form action="{{ url_for('paper.download_paper', paper_id=paper.paper_id) }}" method="POST" style="display: inline;">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-download"></i> Download PDF
+                                        </button>
+                                    </form>
+                                    <button type="button" class="btn btn-info ms-2" id="citationButton" data-paper-id="{{ paper.paper_id }}">
+                                        <i class="bi bi-quote"></i> Cite
                                     </button>
-                                </form>
+                                </div>
                             {% else %}
                                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#loginModal">
                                     <i class="bi bi-download"></i> Download PDF
@@ -157,4 +162,84 @@
         </div>
     </div>
 </div>
+
+<!-- Citation Modal -->
+<div class="modal fade" id="citationModal" tabindex="-1" aria-labelledby="citationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="citationModalLabel">Citation</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Citation Style Selection -->
+                <div class="mb-3">
+                    <label for="citationStyleSelect" class="form-label">Citation Style:</label>
+                    <select class="form-select" id="citationStyleSelect">
+                        <option value="APA">APA</option>
+                        <option value="MLA">MLA</option>
+                        <option value="IEEE">IEEE</option>
+                    </select>
+                </div>
+                
+                <!-- Citation Text -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Formatted Citation</span>
+                        <div>
+                            <button id="copyButton" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="citationText" class="border p-3 rounded bg-light">
+                            <div class="placeholder-glow">
+                                <span class="placeholder col-12"></span>
+                                <span class="placeholder col-10"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- BibTeX Download and Permalink -->
+                <div class="d-flex justify-content-between">
+                    <button id="downloadBibtexButton" class="btn btn-outline-secondary" disabled>
+                        <i class="bi bi-download"></i> Download BibTeX
+                    </button>
+                    <button id="permalinkButton" class="btn btn-outline-info" disabled>
+                        <i class="bi bi-link"></i> Permalink
+                    </button>
+                </div>
+
+                <!-- Citations metrics will be shown here -->
+                <div id="citationMetrics" class="mt-3 small text-muted d-none">
+                    <div class="row">
+                        <div class="col-6">
+                            <i class="bi bi-clipboard-check"></i> Copied: <span id="copyCount">0</span> times
+                        </div>
+                        <div class="col-6">
+                            <i class="bi bi-download"></i> Downloaded: <span id="downloadCount">0</span> times
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Edit Citation Info button for paper owners -->
+                {% if current_user.is_authenticated and current_user.registered_profile and current_user.registered_profile.registered_user_id == paper.owner_registered_user_id %}
+                <div class="mt-4 text-end">
+                    <a href="{{ url_for('citation.edit_citation_metadata', paper_id=paper.paper_id) }}" class="btn btn-warning">
+                        <i class="bi bi-pencil"></i> Edit Citation Info
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts_extra %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/citation.js') }}"></script>
+{% endblock %}
+
 {% endblock %}
