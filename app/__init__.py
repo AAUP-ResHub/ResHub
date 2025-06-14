@@ -31,6 +31,8 @@ def create_app():
     from app.forum import forum_bp
     from app.errors import errors_bp
     from app.search import search_bp
+    from app.citation import citation_bp
+    from app.api_routes import api_bp
     
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -38,6 +40,8 @@ def create_app():
     app.register_blueprint(forum_bp)
     app.register_blueprint(errors_bp)
     app.register_blueprint(search_bp, url_prefix='/search')
+    app.register_blueprint(citation_bp)
+    app.register_blueprint(api_bp)
     
     # Context processor for template variables
     @app.context_processor
