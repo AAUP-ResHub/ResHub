@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from flask import render_template, redirect, url_for, flash, request, current_app, send_from_directory
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -28,10 +29,18 @@ def paper_detail(paper_id):
     
     # Only increment read_count if not the owner
     if current_user.is_authenticated:
-        if current_user.is_anonymous or current_user.registered_profile.registered_user_id != paper.owner_registered_user_id:
-            if paper.metrics:
-                paper.metrics.read_count += 1
-                db.session.commit()
+        # Check if user has a registered profile before accessing its attributes
+        has_profile = hasattr(current_user, 'registered_profile') and current_user.registered_profile is not None
+        
+        # Only compare user_id if user has a profile
+        is_owner = False
+        if has_profile:
+            is_owner = current_user.registered_profile.registered_user_id == paper.owner_registered_user_id
+            
+        # Increment read count if not the owner
+        if not is_owner and paper.metrics:
+            paper.metrics.read_count += 1
+            db.session.commit()
     
     return render_template('papers/paper_detail.html', paper=paper)
 
@@ -92,13 +101,33 @@ def new_paper():
                 # Refresh the user object to get the new registered_profile
                 db.session.refresh(current_user)
                 
-            # Create new paper record
+            # Get citation metadata fields
+            authors = request.form.get('authors', '')
+            publication_year = request.form.get('publication_year', '')
+            journal = request.form.get('journal', '')
+            volume = request.form.get('volume', '')
+            issue = request.form.get('issue', '')
+            pages = request.form.get('pages', '')
+            publisher = request.form.get('publisher', '')
+            doi = request.form.get('doi', '')
+                
+            # Create new paper record with citation metadata
             paper = ResearchPaper(
                 title=title,
                 abstract=abstract,
                 file_path=db_file_path,
                 keywords=keywords,
-                owner_registered_user_id=current_user.registered_profile.registered_user_id
+                owner_registered_user_id=current_user.registered_profile.registered_user_id,
+                publish_date=datetime.utcnow(),
+                # Citation metadata fields
+                authors=authors,
+                publication_year=publication_year,
+                journal=journal,
+                volume=volume,
+                issue=issue,
+                pages=pages,
+                publisher=publisher,
+                doi=doi
             )
             
             # Create metrics record
@@ -129,7 +158,16 @@ def download_paper(paper_id):
     paper = ResearchPaper.query.get_or_404(paper_id)
     
     # Only increment download count if not the owner
-    if paper.metrics and current_user.registered_profile.registered_user_id != paper.owner_registered_user_id:
+    # Check if user has a registered profile before accessing its attributes
+    has_profile = hasattr(current_user, 'registered_profile') and current_user.registered_profile is not None
+    
+    # Only compare user_id if user has a profile
+    is_owner = False
+    if has_profile:
+        is_owner = current_user.registered_profile.registered_user_id == paper.owner_registered_user_id
+        
+    # Increment download count if not the owner
+    if paper.metrics and not is_owner:
         paper.metrics.download_count += 1
         db.session.commit()
     
