@@ -6,6 +6,7 @@ Flask-CORS==4.0.0
 Flask-SQLAlchemy==3.0.5
 Flask-Login==0.6.2
 Flask-Migrate==4.0.4
+Flask-WTF==1.2.2
 markdown-it-py==3.0.0
 bleach==6.2.0
 mdurl==0.1.2

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('workspaces.index') }}">Workspaces</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('workspaces.workspace_detail', workspace_id=workspace.workspace_id) }}">{{ workspace.title }}</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('workspaces.view_document', workspace_id=workspace.workspace_id, doc_id=document.id) }}">{{ document.title }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Edit</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Edit Document</h1>
+        <a href="{{ url_for('workspaces.view_document', workspace_id=workspace.workspace_id, doc_id=document.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('workspaces.edit_document', workspace_id=workspace.workspace_id, doc_id=document.id) }}">
+                <div class="mb-3">
+                    <label for="title" class="form-label">Document Title</label>
+                    <input type="text" class="form-control" id="title" name="title" value="{{ document.title }}" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="content" class="form-label">Content</label>
+                    <textarea class="form-control" id="content" name="content" rows="15">{{ document.content }}</textarea>
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <a href="{{ url_for('workspaces.view_document', workspace_id=workspace.workspace_id, doc_id=document.id) }}" class="btn btn-outline-secondary me-2">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="card-title mb-0">Document Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Created:</strong> {{ document.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    <p><strong>Author:</strong> {{ document.author.name if document.author else 'Unknown' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Updated:</strong> {{ document.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    <p><strong>Workspace:</strong> {{ workspace.title }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-expand textarea based on content
+    const textarea = document.getElementById('content');
+    if (textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight) + 'px';
+        
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
+});
+</script>
+{% endblock %}

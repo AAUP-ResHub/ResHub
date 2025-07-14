@@ -31,7 +31,8 @@
                         {% endif %}
                     {% endwith %}
                     
-                    <form method="POST">
+                    <form method="POST" action="{{ url_for('forum.new_topic') }}">
+                        {{ form.csrf_token }}
                         <div class="mb-3">
                             <label for="title" class="form-label">Topic Title <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="title" name="title" required>

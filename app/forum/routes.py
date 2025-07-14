@@ -4,6 +4,7 @@ from markdown_it import MarkdownIt
 import bleach
 from sqlalchemy import desc
 from datetime import datetime
+from flask_wtf import FlaskForm
 
 from app.forum import forum_bp
 from app.models import ForumTopic, ForumPost, RegisteredUser
@@ -74,13 +75,17 @@ def topic_detail(topic_id):
     for post in pinned_posts:
         post.rendered_content = render_markdown(post.content)
     
-    return render_template('forum/topic.html', topic=topic, posts=posts, pinned_posts=pinned_posts)
+    # Create a form for CSRF protection
+    form = FlaskForm()
+    
+    return render_template('forum/topic.html', topic=topic, posts=posts, pinned_posts=pinned_posts, form=form)
 
 @forum_bp.route('/new', methods=['GET', 'POST'])
 @login_required
 def new_topic():
     """Create a new forum topic"""
-    if request.method == 'POST':
+    form = FlaskForm()
+    if form.validate_on_submit():
         title = request.form.get('title')
         content = request.form.get('content')
         
@@ -119,12 +124,16 @@ def new_topic():
         flash('Topic created successfully!', 'success')
         return redirect(url_for('forum.topic_detail', topic_id=topic.topic_id))
     
-    return render_template('forum/new_topic.html')
+    return render_template('forum/new_topic.html', form=form)
 
 @forum_bp.route('/<int:topic_id>/reply', methods=['POST'])
 @login_required
 def reply(topic_id):
     """Add a reply to a topic"""
+    form = FlaskForm()
+    if not form.validate_on_submit():
+        return abort(400)  # Bad request if CSRF validation fails
+        
     topic = ForumTopic.query.get_or_404(topic_id)
     content = request.form.get('content')
     
@@ -164,7 +173,10 @@ def edit_post(post_id):
     if post.author_registered_user_id != current_user.registered_profile.registered_user_id and not is_admin():
         abort(403)
     
-    if request.method == 'POST':
+    # Create a form for CSRF protection
+    form = FlaskForm()
+    
+    if request.method == 'POST' and form.validate_on_submit():
         content = request.form.get('content')
         
         if not content:
@@ -178,12 +190,16 @@ def edit_post(post_id):
         flash('Post updated successfully!', 'success')
         return redirect(url_for('forum.topic_detail', topic_id=post.topic_id))
     
-    return render_template('forum/edit_post.html', post=post)
+    return render_template('forum/edit_post.html', post=post, form=form)
 
 @forum_bp.route('/post/<int:post_id>/delete', methods=['POST'])
 @login_required
 def delete_post(post_id):
     """Delete a forum post"""
+    form = FlaskForm()
+    if not form.validate_on_submit():
+        return abort(400)  # Bad request if CSRF validation fails
+        
     post = ForumPost.query.get_or_404(post_id)
     
     # Check if user is the author or an admin
@@ -216,6 +232,10 @@ def delete_post(post_id):
 @login_required
 def toggle_pin(post_id):
     """Pin or unpin a post (admin only)"""
+    form = FlaskForm()
+    if not form.validate_on_submit():
+        return abort(400)  # Bad request if CSRF validation fails
+        
     if not is_admin():
         abort(403)
     

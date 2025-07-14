@@ -180,11 +180,14 @@ class Notification(db.Model):
     message = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, default=False)
     sent_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    
     recipient_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)
-
+    actor_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=True)
+    action = db.Column(db.String(50), nullable=True)
+    object_type = db.Column(db.String(50), nullable=True)
+    object_id = db.Column(db.Integer, nullable=True)
+    
     def __repr__(self):
-        return f'<Notification {self.notification_id} to UserID {self.recipient_registered_user_id}>'
+        return f'<Notification {self.notification_id} to user {self.recipient_registered_user_id}>'
 
 # --- Service and Feature Related Entities ---
 class JournalFinderServiceConfig(db.Model):
@@ -224,14 +227,41 @@ class WorkspaceMember(db.Model):
     def __repr__(self):
         return f'<WorkspaceMember UserID {self.user_id} in WorkspaceID {self.workspace_id} as {self.role}>'
 
+class WorkspaceDocument(db.Model):
+    __tablename__ = 'workspace_documents'
+    id = db.Column(db.Integer, primary_key=True)  # Primary key is 'id', not 'document_id'
+    title = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_default = db.Column(db.Boolean, default=False)  # Added missing is_default column
+    
+    # Foreign keys
+    workspace_id = db.Column(db.Integer, db.ForeignKey('collaboration_workspaces.workspace_id'), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)  # Column is 'author_id', not 'creator_id'
+    
+    # Relationships
+    workspace = db.relationship('CollaborationWorkspace', backref=db.backref('documents', lazy='dynamic'))
+    author = db.relationship('RegisteredUser', backref=db.backref('authored_documents', lazy='dynamic'))
+    attachments = db.relationship('WorkspaceFile', backref='document', lazy='dynamic',
+                               foreign_keys='WorkspaceFile.document_id', cascade="all, delete-orphan")  # Updated relationship name
+    
+    def __repr__(self):
+        return f'<WorkspaceDocument {self.id}: {self.title}>'
+
 class WorkspaceFile(db.Model):
     __tablename__ = 'workspace_files'
     file_id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
     upload_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    s3_object_key = db.Column(db.String(255))
+    description = db.Column(db.Text)
+    size_bytes = db.Column(db.Integer)
+    content_type = db.Column(db.String(100))
     
     uploader_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)
     workspace_id = db.Column(db.Integer, db.ForeignKey('collaboration_workspaces.workspace_id'), nullable=False)
+    document_id = db.Column(db.Integer, db.ForeignKey('workspace_documents.id'), nullable=True, index=True)
 
     def __repr__(self):
         return f'<WorkspaceFile {self.file_id}: {self.filename}>'
