@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {{ title }} | ResHub
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">{{ title }}</h1>
+        
+        <div class="btn-group">
+            <a href="{{ url_for('paper.new_paper') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Upload New Paper
+            </a>
+            {% if papers.items %}
+            <a href="{{ url_for('citation.export_all') }}" class="btn btn-info">
+                <i class="bi bi-download"></i> Export All Citations
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            {% if papers.items %}
+                {% for paper in papers.items %}
+                <div class="card mb-3 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a href="{{ url_for('paper.paper_detail', paper_id=paper.paper_id) }}" class="text-decoration-none">
+                                {{ paper.title }}
+                            </a>
+                        </h5>
+                        <div class="d-flex justify-content-between mb-2">
+                            <h6 class="card-subtitle text-muted">
+                                {% if paper.publish_date %}
+                                    Published on {{ paper.publish_date.strftime('%B %d, %Y') }}
+                                {% endif %}
+                            </h6>
+                            <span class="badge {% if paper.publish_date %}bg-success{% else %}bg-warning{% endif %}">
+                                {% if paper.publish_date %}Published{% else %}Draft{% endif %}
+                            </span>
+                        </div>
+                        
+                        {% if paper.keywords %}
+                        <div class="mb-2">
+                            {% for keyword in paper.keywords.split(',') %}
+                                <span class="badge bg-secondary">{{ keyword.strip() }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <p class="card-text">
+                            {{ paper.abstract[:150] }}{% if paper.abstract|length > 150 %}...{% endif %}
+                        </p>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <i class="bi bi-eye text-info"></i> 
+                                    <span class="fw-bold">{{ paper.metrics.read_count }}</span> views
+                                </div>
+                                <div class="me-3">
+                                    <i class="bi bi-download text-success"></i> 
+                                    <span class="fw-bold">{{ paper.metrics.download_count }}</span> downloads
+                                </div>
+                                <div>
+                                    <i class="bi bi-quote text-primary"></i>
+                                    <span class="fw-bold">{{ paper.metrics.citation_count }}</span> citations
+                                </div>
+                            </div>
+                            <div>
+                                <a href="{{ url_for('paper.paper_detail', paper_id=paper.paper_id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                {% if is_premium %}
+                                <a href="#" 
+                                   class="btn btn-sm btn-outline-success find-journal-btn"
+                                   data-paper-id="{{ paper.paper_id }}"
+                                   data-paper-title="{{ paper.title|replace("'", '&#39;')|replace('"', '&quot;') }}"
+                                   data-paper-abstract="{{ paper.abstract|replace("'", '&#39;')|replace('"', '&quot;') }}"
+                                   data-paper-pdf="{{ paper.pdf_path|default('', true)|replace("'", '&#39;')|replace('"', '&quot;') }}">
+                                    <i class="bi bi-journal-check"></i> Find Best Journal
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                <!-- Pagination -->
+                {% if papers.pages > 1 %}
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        {% if papers.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('paper.my_papers', page=papers.prev_num) }}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&laquo;</span>
+                            </li>
+                        {% endif %}
+                        
+                        {% for page_num in papers.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                            {% if page_num %}
+                                {% if page_num == papers.page %}
+                                    <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                                {% else %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('paper.my_papers', page=page_num) }}">{{ page_num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if papers.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('paper.my_papers', page=papers.next_num) }}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&raquo;</span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info text-center py-5">
+                    <h4 class="alert-heading"><i class="bi bi-journal-x"></i> No Papers Found</h4>
+                    <p class="mb-0">You haven't uploaded any research papers yet.</p>
+                    <div class="mt-4">
+                        <a href="{{ url_for('paper.new_paper') }}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-plus-circle"></i> Upload Paper
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">My Papers Overview</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Total Papers
+                            <span class="badge bg-primary rounded-pill">{{ papers.total }}</span>
+                        </li>
+                        {% if papers.items %}
+                        <li class="list-group-item">
+                            <a href="{{ url_for('paper.new_paper') }}" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="bi bi-plus-circle"></i> Upload Another Paper
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mt-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Search Papers</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('search.results') }}" method="get">
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="q" placeholder="Search by title, abstract, or keywords">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    // Direct implementation of paper data transfer functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('My Papers page loaded - setting up Find Journal buttons');
+        
+        // Find all "Find Best Journal" buttons
+        const findJournalButtons = document.querySelectorAll('.find-journal-btn');
+        console.log('Found buttons:', findJournalButtons.length);
+        
+        // Add click event listeners to each button
+        findJournalButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                // Prevent the default link behavior
+                e.preventDefault();
+                
+                // Get paper data from data attributes
+                const paperId = this.getAttribute('data-paper-id');
+                const paperTitle = this.getAttribute('data-paper-title');
+                const paperAbstract = this.getAttribute('data-paper-abstract');
+                const pdfPath = this.getAttribute('data-paper-pdf') || '';
+                
+                // Store paper data for Journal Finder
+                const paperData = {
+                    id: paperId,
+                    title: paperTitle,
+                    abstract: paperAbstract,
+                    pdf: pdfPath
+                };
+                
+                // Clear any previous data
+                localStorage.removeItem('journalFinderPaperData');
+                sessionStorage.removeItem('journalFinderPaperData');
+                
+                // Store in sessionStorage (preferred for this use case)
+                try {
+                    sessionStorage.setItem('journalFinderPaperData', JSON.stringify(paperData));
+                    console.log('Paper data stored in sessionStorage');
+                } catch (err) {
+                    console.error('Error saving to sessionStorage:', err);
+                }
+                
+                // Create URL with source parameter and minimal data
+                const journalFinderUrl = new URL('/citation/journal-finder', window.location.origin);
+                journalFinderUrl.searchParams.append('source', 'my-papers');
+                journalFinderUrl.searchParams.append('paper_id', paperId);
+                
+                console.log('Redirecting to Journal Finder from My Papers:', journalFinderUrl.toString());
+                
+                // Navigate to the journal finder page
+                window.location.href = journalFinderUrl.toString();
+            });
+        });
+    });
+</script>
+{% endblock %}

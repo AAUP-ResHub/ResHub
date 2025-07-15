@@ -15,9 +15,15 @@
         <li class="nav-item">
           <a class="nav-link" href="{{ url_for('forum.index') }}">Forums</a>
         </li>
+        {% if current_user.is_authenticated %}
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('citation.journal_finder') }}">Journal Finder</a>
+          </li>
+        {% else %}
         <li class="nav-item">
           <a class="nav-link" href="/about">About</a>
         </li>
+        {% endif %}
       </ul>
       
       <!-- Search Form -->
@@ -29,10 +35,100 @@
           </button>
         </div>
       </form>
-      <div class="d-flex">
+      <div class="d-flex align-items-center">
         {% if current_user.is_authenticated %}
-          <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-primary me-2">Dashboard</a>
-          <a href="{{ url_for('auth.logout') }}" class="btn btn-primary">Logout</a>
+          <!-- Messages Icon -->
+          <div class="me-3">
+            <a href="{{ url_for('messaging.inbox') }}" class="btn position-relative p-2 rounded-circle" 
+               style="background-color: #e9ecef; border: 1px solid #dee2e6;" title="Messages Inbox">
+              <i class="bi bi-chat-left-text-fill" style="font-size: 22px; color: #495057;"></i>
+              <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="unread-messages-count"></span>
+            </a>
+          </div>
+          
+          
+          <!-- Notification Bell Icon -->
+          <div class="dropdown me-3">
+            <a class="nav-link position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-bell fs-5"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end p-0" aria-labelledby="notificationDropdown" style="width: 300px; max-height: 500px; overflow-y: auto;">
+                <div class="p-2 border-bottom">
+                  <h6 class="mb-0">Notifications</h6>
+                </div>
+                <div class="notification-list">
+                  <!-- Temporarily disabled notifications until database schema is updated -->
+                  <div class="dropdown-item p-2 border-bottom">
+                    <p class="mb-0 text-muted">Notifications temporarily unavailable</p>
+                  </div>
+                </div>
+                <div class="p-2">
+                  <a href="#" class="btn btn-sm btn-primary w-100">View All</a>
+                </div>
+              </div>
+          </div>
+          <!-- User Avatar Dropdown -->
+          <div class="dropdown">
+            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <div class="avatar-container me-1" style="position: relative;">
+                {% if current_user.registered_profile %}
+                  {% if current_user.registered_profile.profile_photo_url %}
+                    <img src="{{ current_user.registered_profile.profile_photo_url }}" 
+                         alt="{{ current_user.username }}" 
+                         class="rounded-circle" 
+                         style="width: 32px; height: 32px; object-fit: cover; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                  {% else %}
+                    {% set first_name = current_user.registered_profile.first_name or 'U' %}
+                    {% set last_name = current_user.registered_profile.last_name or '' %}
+                    <img src="https://ui-avatars.com/api/?name={{ first_name }}+{{ last_name }}&size=32&background=4a6fa5&color=fff" 
+                         alt="{{ current_user.username }}" 
+                         class="rounded-circle" 
+                         style="width: 32px; height: 32px; object-fit: cover; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                  {% endif %}
+                {% else %}
+                  <img src="https://ui-avatars.com/api/?name=U&size=32&background=4a6fa5&color=fff" 
+                       alt="{{ current_user.username }}" 
+                       class="rounded-circle" 
+                       style="width: 32px; height: 32px; object-fit: cover; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                {% endif %}
+              </div>
+              <small class="d-none d-md-inline ms-1">{{ current_user.username }}</small>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+              <li>
+                <a class="dropdown-item" href="{{ url_for('main.dashboard') }}">
+                  <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                </a>
+              </li>
+              <!-- Messages link moved to top navbar icon -->
+              <li>
+                <a class="dropdown-item" href="{{ url_for('main.semantic_graph') }}">
+                  <i class="bi bi-graph-up me-2"></i> Semantic Graph
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('paper.my_papers') }}">
+                  <i class="bi bi-file-earmark-text me-2"></i> My Research Papers
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="/workspaces">
+                  <i class="bi bi-people me-2"></i> Collaboration Workspaces
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="/notifications">
+                  <i class="bi bi-bell me-2"></i> Notifications
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('auth.logout') }}">
+                  <i class="bi bi-box-arrow-right me-2"></i> Logout
+                </a>
+              </li>
+            </ul>
+          </div>
         {% else %}
           <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary me-2">Login</a>
           <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Register</a>

@@ -1,0 +1,60 @@
+{% if pending_scheduled_messages %}
+<div class="card mb-3 border-info shadow-sm">
+    <div class="card-header bg-info bg-gradient text-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>🕑 Scheduled Messages</h6>
+        <a href="{{ url_for('messaging.scheduled_messages') }}" class="text-white">
+            View All <i class="bi bi-arrow-right"></i>
+        </a>
+    </div>
+    <div class="list-group list-group-flush" id="scheduled-messages-list">
+        {% for scheduled in pending_scheduled_messages %}
+        <div class="list-group-item p-3">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <span class="badge bg-info text-white mb-2">
+                        <i class="bi bi-clock"></i> Scheduled for {{ scheduled.scheduled_for.strftime('%b %d, %Y at %I:%M %p') }}
+                    </span>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary edit-scheduled-btn" 
+                            data-message-id="{{ scheduled.message_id }}"
+                            data-bs-toggle="modal"
+                            data-bs-target="#editScheduledModal"
+                            title="Edit message">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger cancel-scheduled-btn" 
+                            data-message-id="{{ scheduled.message_id }}"
+                            title="Cancel message">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card bg-light">
+                <div class="card-body py-2">
+                    <p class="mb-1">{{ scheduled.content }}</p>
+                </div>
+            </div>
+            
+            <div class="mt-2">
+                <small class="text-muted">
+                    <i class="bi bi-people"></i> Recipients: 
+                    {% set recipients = scheduled.recipients %}
+                    {% for recipient in recipients %}
+                        {% set recipient_user = User.query.get(recipient.recipient_id) %}
+                        <span class="badge bg-secondary">{{ recipient_user.username }}</span>
+                    {% endfor %}
+                </small>
+                <button class="btn btn-sm btn-link manage-recipients-btn"
+                        data-message-id="{{ scheduled.message_id }}"
+                        data-bs-toggle="modal"
+                        data-bs-target="#editScheduledModal">
+                    <i class="bi bi-plus-circle"></i> Add/Remove Recipients
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}

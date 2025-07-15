@@ -1,0 +1,23 @@
+{% for message in messages %}
+<div class="d-flex mb-3 {% if message.sender_id == current_user.user_id %}flex-row-reverse{% endif %}">
+    <div class="message-bubble {% if message.sender_id == current_user.user_id %}message-sent{% else %}message-received{% endif %}">
+        {% if message.sender_id != current_user.user_id %}
+            <div class="message-header">{{ other_user.username }}</div>
+        {% endif %}
+        
+        <div class="message-content">
+            {{ message.content }}
+        </div>
+        
+        <div class="message-time" data-timestamp="{{ message.timestamp.isoformat() }}">
+            {{ message.timestamp.strftime('%I:%M %p') }}
+        </div>
+        
+
+        
+        {% if message.sender_id == current_user.user_id and message.is_read %}
+            <div class="seen-indicator">Seen</div>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}

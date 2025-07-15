@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+
+{% block title %}Scheduled Messages | ResHub{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Scheduled Messages</h1>
+        <a href="{{ url_for('messaging.inbox') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Inbox
+        </a>
+    </div>
+
+    {% if scheduled_messages %}
+        <div class="scheduled-messages">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Upcoming Messages</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for message in scheduled_messages %}
+                        <div class="list-group-item p-3" id="scheduled-message-{{ message.id }}">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-1">Scheduled for {{ message.scheduled_for.strftime('%b %d, %Y at %I:%M %p') }}</h6>
+                                <span class="badge bg-info">{{ message.status }}</span>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <strong>Recipients:</strong>
+                                <div class="recipient-list">
+                                    {% for recipient in message.recipients %}
+                                        <span class="badge bg-light text-dark me-1 mb-1">{{ recipient.username }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <p class="mb-0 message-content">{{ message.content }}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-end">
+                                <button class="btn btn-sm btn-outline-primary me-2 edit-scheduled-btn" 
+                                        data-message-id="{{ message.id }}"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editScheduledModal">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger cancel-scheduled-btn" 
+                                        data-message-id="{{ message.id }}">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <div class="mb-3">
+                <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
+            </div>
+            <h4 class="text-muted">No scheduled messages yet</h4>
+            <p class="text-muted">Messages you schedule for future delivery will appear here</p>
+            <a href="{{ url_for('messaging.new_message') }}" class="btn btn-primary mt-3">
+                <i class="bi bi-calendar-plus"></i> Schedule a Message
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Edit Scheduled Message Modal -->
+<div class="modal fade" id="editScheduledModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Scheduled Message</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-scheduled-form">
+                    <input type="hidden" name="message_id" id="edit-message-id">
+                    
+                    <div class="mb-3">
+                        <label for="edit-scheduled-time" class="form-label">Schedule For</label>
+                        <input type="datetime-local" class="form-control" id="edit-scheduled-time" name="scheduled_for" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit-recipients" class="form-label">Recipients</label>
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control" id="edit-recipient-search" placeholder="Search users...">
+                            <button class="btn btn-outline-secondary" type="button" id="search-recipients-btn">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                        <div id="recipient-search-results" class="list-group mb-2" style="max-height: 200px; overflow-y: auto; display: none;"></div>
+                        <div id="selected-recipients" class="d-flex flex-wrap gap-2 border rounded p-2" style="min-height: 40px;"></div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit-message-content" class="form-label">Message</label>
+                        <textarea class="form-control" id="edit-message-content" name="content" rows="4" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-scheduled-edit">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    setupScheduledMessageControls();
+});
+
+function setupScheduledMessageControls() {
+    // Edit button handlers
+    document.querySelectorAll('.edit-scheduled-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const messageId = this.dataset.messageId;
+            loadScheduledMessageForEdit(messageId);
+        });
+    });
+    
+    // Cancel button handlers
+    document.querySelectorAll('.cancel-scheduled-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const messageId = this.dataset.messageId;
+            if (confirm('Are you sure you want to cancel this scheduled message?')) {
+                cancelScheduledMessage(messageId);
+            }
+        });
+    });
+    
+    // Save edit button
+    document.getElementById('save-scheduled-edit')?.addEventListener('click', function() {
+        saveScheduledMessageEdit();
+    });
+    
+    // Setup recipient search
+    document.getElementById('search-recipients-btn')?.addEventListener('click', function() {
+        searchRecipients();
+    });
+    
+    document.getElementById('edit-recipient-search')?.addEventListener('keyup', function(e) {
+        if (e.key === 'Enter') {
+            searchRecipients();
+        }
+    });
+}
+
+function loadScheduledMessageForEdit(messageId) {
+    fetch(`/messaging/scheduled-messages/${messageId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                const message = data.message;
+                
+                // Populate form fields
+                document.getElementById('edit-message-id').value = message.id;
+                document.getElementById('edit-message-content').value = message.content;
+                
+                // Format date for datetime-local input
+                const scheduledDate = new Date(message.scheduled_for);
+                const formattedDate = scheduledDate.toISOString().slice(0, 16); // Format as YYYY-MM-DDTHH:MM
+                document.getElementById('edit-scheduled-time').value = formattedDate;
+                
+                // Clear and populate recipients
+                const selectedRecipientsContainer = document.getElementById('selected-recipients');
+                selectedRecipientsContainer.innerHTML = '';
+                
+                message.recipients.forEach(recipient => {
+                    addRecipientChip(recipient);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading message:', error);
+            alert('Failed to load message details.');
+        });
+}
+
+function searchRecipients() {
+    const searchQuery = document.getElementById('edit-recipient-search').value.trim();
+    if (!searchQuery) return;
+    
+    fetch(`/messaging/search-users?q=${encodeURIComponent(searchQuery)}`)
+        .then(response => response.json())
+        .then(data => {
+            const resultsContainer = document.getElementById('recipient-search-results');
+            resultsContainer.innerHTML = '';
+            resultsContainer.style.display = 'block';
+            
+            if (data.users && data.users.length > 0) {
+                data.users.forEach(user => {
+                    const item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'list-group-item list-group-item-action';
+                    item.textContent = user.username;
+                    item.dataset.userId = user.user_id;
+                    item.dataset.username = user.username;
+                    
+                    item.addEventListener('click', function() {
+                        addRecipientChip({
+                            id: this.dataset.userId,
+                            username: this.dataset.username
+                        });
+                        resultsContainer.style.display = 'none';
+                        document.getElementById('edit-recipient-search').value = '';
+                    });
+                    
+                    resultsContainer.appendChild(item);
+                });
+            } else {
+                resultsContainer.innerHTML = '<div class="list-group-item">No users found</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error searching users:', error);
+        });
+}
+
+function addRecipientChip(recipient) {
+    const selectedRecipientsContainer = document.getElementById('selected-recipients');
+    
+    // Check if recipient is already added
+    if (document.querySelector(`[data-recipient-id="${recipient.id}"]`)) {
+        return;
+    }
+    
+    const chip = document.createElement('div');
+    chip.className = 'badge bg-primary d-flex align-items-center';
+    chip.dataset.recipientId = recipient.id;
+    
+    chip.innerHTML = `
+        <span>${recipient.username}</span>
+        <input type="hidden" name="recipient_ids[]" value="${recipient.id}">
+        <button type="button" class="btn-close btn-close-white ms-2" aria-label="Remove" style="font-size: 0.5rem;"></button>
+    `;
+    
+    chip.querySelector('.btn-close').addEventListener('click', function() {
+        chip.remove();
+    });
+    
+    selectedRecipientsContainer.appendChild(chip);
+}
+
+function saveScheduledMessageEdit() {
+    const form = document.getElementById('edit-scheduled-form');
+    const messageId = document.getElementById('edit-message-id').value;
+    const content = document.getElementById('edit-message-content').value.trim();
+    const scheduledFor = document.getElementById('edit-scheduled-time').value;
+    
+    // Get all recipient IDs from hidden inputs
+    const recipientInputs = form.querySelectorAll('input[name="recipient_ids[]"]');
+    if (recipientInputs.length === 0) {
+        alert('Please add at least one recipient.');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('content', content);
+    formData.append('scheduled_for', scheduledFor);
+    
+    recipientInputs.forEach(input => {
+        formData.append('recipient_ids[]', input.value);
+    });
+    
+    fetch(`/messaging/scheduled-messages/${messageId}/edit`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Close modal and refresh the page to show updated message
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editScheduledModal'));
+            modal.hide();
+            window.location.reload();
+        } else {
+            alert(data.error || 'Failed to save changes.');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving changes:', error);
+        alert('An error occurred while saving changes.');
+    });
+}
+
+function cancelScheduledMessage(messageId) {
+    fetch(`/messaging/scheduled-messages/${messageId}/cancel`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove the message from the UI
+            const messageElement = document.getElementById(`scheduled-message-${messageId}`);
+            if (messageElement) {
+                messageElement.remove();
+            }
+            
+            // If no more messages, refresh to show the empty state
+            const remainingMessages = document.querySelectorAll('.scheduled-messages .list-group-item');
+            if (remainingMessages.length === 0) {
+                window.location.reload();
+            }
+        } else {
+            alert(data.error || 'Failed to cancel message.');
+        }
+    })
+    .catch(error => {
+        console.error('Error cancelling message:', error);
+        alert('An error occurred while cancelling the message.');
+    });
+}
+</script>
+{% endblock %}

@@ -739,20 +739,25 @@ def edit_citation_metadata(paper_id):
 @citation_bp.route('/journal-finder', methods=['GET', 'POST'])
 @login_required
 def journal_finder():
-    """Journal finder route for all users, with premium features"""
+    """Journal finder route for premium users"""
+    print("\n======= JOURNAL FINDER ROUTE ACCESSED =======\n")
+    print(f"Request method: {request.method}")
+    
     # Check if user is authenticated
     if not current_user.is_authenticated:
         flash('You need to log in to access this feature.', 'warning')
         return redirect(url_for('auth.login'))
     
-    # Check if user is premium
+    # Check if user is premium (only premium users can access journal finder)
+    # First find the RegisteredUser associated with the current user
     registered_user = db.session.query(RegisteredUser).filter_by(user_id=current_user.user_id).first()
     is_premium = False
     if registered_user:
         # Then check if this RegisteredUser has a premium profile
         is_premium = db.session.query(PremiumUser).filter_by(registered_user_id=registered_user.registered_user_id).first() is not None
-    
-    print(f"User is premium: {is_premium}")
+    if not is_premium:
+        print("User is not a premium user")
+        return render_template('citations/journal_finder_premium_required.html')
     
     # Import required modules
     import os
@@ -768,13 +773,6 @@ def journal_finder():
     # Initialize variables for both GET and POST requests
     matching_journals = []
     submitted = False
-    
-    # Pass the is_premium flag to the template
-    template_vars = {
-        'is_premium': is_premium,
-        'matching_journals': matching_journals,
-        'submitted': submitted
-    }
     
     # Load journal data from JSON file
     journals = []
@@ -975,40 +973,53 @@ def journal_finder():
                             if overlap > 0:
                                 keyword_matches.append((journal, overlap))
                         
+                        # Sort by overlap
                         keyword_matches.sort(key=lambda x: x[1], reverse=True)
                         matching_journals = keyword_matches
                     
-                    # Third fallback: Default to top journals by field similarity
-                    if not matching_journals:
-                        matching_journals = [(j, s) for j, s in similarities[:5]]
-                        flash('No close matches found based on your paper. Showing top journals in your field.', 'info')
-                    
-                    # Format journal data for template rendering with similarity scores as attributes
-                    formatted_journals = []
-                    for journal, similarity in matching_journals:
-                        # Create a copy to avoid modifying original data
-                        j = journal.copy()
-                        # Add similarity score as a property of the journal
-                        j['match_score'] = similarity
-                        # Ensure all required fields exist
-                        if 'name' not in j:
-                            j['name'] = 'Unknown Journal'
-                        if 'field' not in j:
-                            j['field'] = 'General'
-                        if 'open_access' not in j:
-                            j['open_access'] = False
-                        if 'submit_link' not in j:
-                            j['submit_link'] = '#'
-                        if 'aims_scope_link' not in j:
-                            j['aims_scope_link'] = '#'
-                        formatted_journals.append(j)
-                    matching_journals = formatted_journals
-                    
-                    # Limit results unless "show all" is selected
-                    if not show_all:
-                        matching_journals = matching_journals[:3]
-                    
-                    # Measure elapsed time
+                    # Sort by overlap
+                    keyword_matches.sort(key=lambda x: x[1], reverse=True)
+                    matching_journals = keyword_matches
+                
+                # Third fallback: Default to top journals by field similarity
+                if not matching_journals:
+                    matching_journals = [(j, s) for j, s in similarities[:5]]
+                    flash('No close matches found based on your paper. Showing top journals in your field.', 'info')
+                
+                # Format journal data for template rendering with similarity scores as attributes
+                formatted_journals = []
+                for journal, similarity in matching_journals:
+                    # Create a copy to avoid modifying original data
+                    j = journal.copy()
+                    # Add similarity score as a property of the journal
+                    j['match_score'] = similarity
+                    formatted_journals.append(j)
+                matching_journals = formatted_journals
+                
+                # Limit results unless "show all" is selected
+                if not show_all:
+                    matching_journals = matching_journals[:3]
+                
+                # Measure elapsed time
+                elapsed_time = time.time() - start_time
+                print(f"Journal matching completed in {elapsed_time:.2f}s")
+                
+            except Exception as e:
+                print(f"Error in semantic matching: {str(e)}")
+                traceback.print_exc()
+                flash(f"Error matching journals: {str(e)}", 'danger')
+        else:
+            flash('Please provide a paper title, abstract, or upload a file.', 'warning')
+    except Exception as e:
+        print(f"Error processing form: {str(e)}")
+        traceback.print_exc()
+        flash(f"Error processing your request: {str(e)}", 'danger')
+        submitted = False  # Don't show results on error
+
+# Render template with results
+return render_template('citations/journal_finder.html',
+                      matching_journals=matching_journals,
+                      submitted=submitted)
                     elapsed_time = time.time() - start_time
                     print(f"Journal matching completed in {elapsed_time:.2f}s")
                     
@@ -1024,14 +1035,10 @@ def journal_finder():
             flash(f"Error processing your request: {str(e)}", 'danger')
             submitted = False  # Don't show results on error
     
-    # Update template variables with final results
-    template_vars.update({
-        'matching_journals': matching_journals,
-        'submitted': submitted
-    })
-    
     # Render template with results
-    return render_template('citations/journal_finder.html', **template_vars)
+    return render_template('citations/journal_finder.html',
+                          matching_journals=matching_journals,
+                          submitted=submitted)
 
 
 @citation_bp.route('/api/citation/<int:paper_id>')

@@ -228,6 +228,53 @@ def user_papers(user_id):
                            papers=papers, 
                            title=f"Papers by {user.user.username}")
 
+@paper_bp.route('/my-papers')
+@login_required
+def my_papers():
+    """Display papers uploaded by the logged-in user"""
+    # Check if user has a registered profile
+    if not hasattr(current_user, 'registered_profile') or current_user.registered_profile is None:
+        flash('You need to complete your profile before accessing your papers.', 'warning')
+        return redirect(url_for('main.dashboard'))
+    
+    page = request.args.get('page', 1, type=int)
+    
+    # Get the registered_user_id of the current user
+    user_id = current_user.registered_profile.registered_user_id
+    current_app.logger.info(f"Fetching papers for user_id: {user_id}")
+    
+    # Check all papers to see owner association
+    all_papers = ResearchPaper.query.all()
+    for paper in all_papers:
+        current_app.logger.info(f"Paper ID: {paper.paper_id}, Title: {paper.title}, Owner ID: {paper.owner_registered_user_id}")
+    
+    # For papers where owner_registered_user_id is NULL, assign to current user
+    orphaned_papers = ResearchPaper.query.filter_by(owner_registered_user_id=None).all()
+    for paper in orphaned_papers:
+        current_app.logger.info(f"Assigning orphaned paper '{paper.title}' to user {user_id}")
+        paper.owner_registered_user_id = user_id
+    
+    if orphaned_papers:
+        try:
+            db.session.commit()
+            flash(f"Found {len(orphaned_papers)} papers without an owner that were assigned to your account.", "info")
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error assigning papers: {e}")
+    
+    # Now query papers owned by the current user
+    papers = ResearchPaper.query.filter_by(owner_registered_user_id=user_id) \
+        .order_by(desc(ResearchPaper.publish_date)) \
+        .paginate(page=page, per_page=10, error_out=False)
+    
+    # Check if user is premium (for the "Find Best Journal" button)
+    is_premium = current_user.has_premium
+    
+    return render_template('papers/my_papers.html', 
+                           papers=papers,
+                           title="My Research Papers",
+                           is_premium=is_premium)
+
 @paper_bp.route('/search')
 def search():
     """Redirect to the global search feature"""

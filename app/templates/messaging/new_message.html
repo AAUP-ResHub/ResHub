@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+
+{% block title %}New Message | ResHub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 col-md-8 offset-md-2 col-lg-6 offset-lg-3">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">New Message</h5>
+                <a href="{{ url_for('messaging.inbox') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Inbox
+                </a>
+            </div>
+            
+            <div class="card-body">
+                <form id="new-message-form" action="{{ url_for('messaging.send_message') }}" method="post">
+                    <div class="mb-3">
+                        <label class="form-label">Recipients</label>
+                        
+                        <!-- Selected recipients will appear here as tags -->
+                        <div id="selected-recipients" class="mb-2">
+                            {% if selected_user %}
+                                <span class="badge bg-primary me-2 mb-2 recipient-tag" data-user-id="{{ selected_user.user_id }}">
+                                    {{ selected_user.username }}
+                                    <i class="bi bi-x ms-1" role="button" onclick="removeRecipient('{{ selected_user.user_id }}')"></i>
+                                </span>
+                                <input type="hidden" name="receiver_ids[]" value="{{ selected_user.user_id }}">
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Search and add recipients -->
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="recipient-search" placeholder="Search for users...">
+                            <button class="btn btn-outline-secondary" type="button" id="add-recipient-btn">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Dropdown for search results -->
+                        <div id="search-results" class="dropdown-menu w-100" style="display:none; max-height: 200px; overflow-y: auto;">
+                            <!-- Search results will appear here -->
+                        </div>
+                        
+                        <!-- Validation message if no recipients are selected -->
+                        <div id="recipient-validation" class="invalid-feedback" style="display:none;">
+                            Please add at least one recipient.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="message-content" class="form-label">Message</label>
+                        <textarea class="form-control" id="message-content" name="content" rows="4" required></textarea>
+                    </div>
+                    
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send"></i> Send Message
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get all DOM elements we need
+    const recipientSearch = document.getElementById('recipient-search');
+    const addRecipientBtn = document.getElementById('add-recipient-btn');
+    const searchResults = document.getElementById('search-results');
+    const selectedRecipients = document.getElementById('selected-recipients');
+    const messageForm = document.getElementById('new-message-form');
+    const recipientValidation = document.getElementById('recipient-validation');
+    
+    // Set to track selected user IDs
+    const selectedUsers = new Set();
+    
+    // Add any pre-selected users to our set
+    document.querySelectorAll('.recipient-tag').forEach(tag => {
+        selectedUsers.add(tag.dataset.userId);
+    });
+    
+    // Make removeRecipient function available globally
+    window.removeRecipient = function(userId) {
+        // Remove from tracking set
+        selectedUsers.delete(userId);
+        
+        // Remove the UI elements
+        const tag = selectedRecipients.querySelector(`.recipient-tag[data-user-id="${userId}"]`);
+        const input = selectedRecipients.querySelector(`input[data-user-id="${userId}"]`);
+        
+        if (tag) tag.remove();
+        if (input) input.remove();
+        
+        // Show validation message if no recipients
+        if (selectedUsers.size === 0) {
+            recipientValidation.style.display = 'block';
+        }
+    };
+    
+    // Add recipient function
+    function addRecipient(userId, username) {
+        // Skip if already added
+        if (selectedUsers.has(userId)) {
+            return;
+        }
+        
+        // Add to our tracking set
+        selectedUsers.add(userId);
+        
+        // Create the badge/tag
+        const tag = document.createElement('span');
+        tag.className = 'badge bg-primary me-2 mb-2 recipient-tag';
+        tag.dataset.userId = userId;
+        tag.innerHTML = `
+            ${username}
+            <i class="bi bi-x ms-1" role="button" onclick="removeRecipient('${userId}')"></i>
+        `;
+        
+        // Create hidden form field
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'receiver_ids[]';
+        hiddenInput.value = userId;
+        hiddenInput.dataset.userId = userId;
+        
+        // Add to DOM
+        selectedRecipients.appendChild(tag);
+        selectedRecipients.appendChild(hiddenInput);
+        
+        // Hide validation message
+        recipientValidation.style.display = 'none';
+        
+        // Clear search field for next entry
+        recipientSearch.value = '';
+        searchResults.innerHTML = '';
+        searchResults.style.display = 'none';
+    }
+    
+    // Handle search input (no debounce for simplicity)
+    recipientSearch.addEventListener('input', function() {
+        const searchValue = this.value.trim();
+        
+        if (!searchValue) {
+            searchResults.style.display = 'none';
+            return;
+        }
+        
+        // Get users matching search term
+        fetch(`{{ url_for('messaging.users_list') }}?search=${encodeURIComponent(searchValue)}`)
+            .then(response => response.text())
+            .then(html => {
+                // Parse the HTML response
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                
+                // Always clear the previous results first
+                searchResults.innerHTML = '';
+                
+                // Process user elements
+                const userElements = tempDiv.querySelectorAll('.user-item');
+                let availableUserCount = 0;
+                
+                // First pass to count available (non-selected) users
+                userElements.forEach(userEl => {
+                    const userId = userEl.dataset.userId;
+                    if (!selectedUsers.has(userId)) {
+                        availableUserCount++;
+                    }
+                });
+                
+                if (userElements.length === 0 || availableUserCount === 0) {
+                    // No users found or all users already selected
+                    searchResults.innerHTML = '<div class="dropdown-item">No users found</div>';
+                } else {
+                    // Add all non-selected users to dropdown
+                    userElements.forEach(userEl => {
+                        const userId = userEl.dataset.userId;
+                        const username = userEl.textContent.trim();
+                        
+                        // Skip already selected users
+                        if (selectedUsers.has(userId)) {
+                            return;
+                        }
+                        
+                        // Create dropdown item
+                        const item = document.createElement('a');
+                        item.className = 'dropdown-item';
+                        item.href = '#';
+                        item.textContent = username;
+                        
+                        // Add click handler
+                        item.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            addRecipient(userId, username);
+                        });
+                        
+                        searchResults.appendChild(item);
+                    });
+                }
+                
+                // Show results dropdown
+                searchResults.style.display = 'block';
+            });
+    });
+    
+    // Add button click handler - SIMPLIFIED VERSION
+    addRecipientBtn.addEventListener('click', function() {
+        const searchValue = recipientSearch.value.trim();
+        if (!searchValue) return;
+        
+        fetch(`{{ url_for('messaging.users_list') }}?search=${encodeURIComponent(searchValue)}`)
+            .then(response => response.text())
+            .then(html => {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                
+                // Find first user that isn't already selected
+                const userElements = tempDiv.querySelectorAll('.user-item');
+                let added = false;
+                
+                for (let i = 0; i < userElements.length; i++) {
+                    const userId = userElements[i].dataset.userId;
+                    const username = userElements[i].textContent.trim();
+                    
+                    if (!selectedUsers.has(userId)) {
+                        addRecipient(userId, username);
+                        added = true;
+                        break;
+                    }
+                }
+                
+                // Focus search field after adding or if nothing found
+                recipientSearch.focus();
+            });
+    });
+    
+    // Form validation
+    messageForm.addEventListener('submit', function(e) {
+        if (selectedUsers.size === 0) {
+            e.preventDefault();
+            recipientValidation.style.display = 'block';
+            return false;
+        }
+        return true;
+    });
+});
+</script>
+{% endblock %}

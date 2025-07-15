@@ -1,0 +1,5 @@
+{% for user in users %}
+<div class="user-item" data-user-id="{{ user.user_id }}">{{ user.username }}</div>
+{% else %}
+<div class="no-users">No users found</div>
+{% endfor %}

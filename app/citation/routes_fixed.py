@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime
 from io import StringIO, BytesIO
 import numpy as np
 from flask import render_template, redirect, url_for, flash, request, jsonify, send_file, abort, current_app
@@ -739,25 +739,30 @@ def edit_citation_metadata(paper_id):
 @citation_bp.route('/journal-finder', methods=['GET', 'POST'])
 @login_required
 def journal_finder():
-    """Journal finder route for all users, with premium features"""
+    """Journal finder route for premium users"""
+    print("\n======= JOURNAL FINDER ROUTE ACCESSED =======\n")
+    print(f"Request method: {request.method}")
+    
     # Check if user is authenticated
     if not current_user.is_authenticated:
         flash('You need to log in to access this feature.', 'warning')
         return redirect(url_for('auth.login'))
     
-    # Check if user is premium
+    # Check if user is premium (only premium users can access journal finder)
+    # First find the RegisteredUser associated with the current user
     registered_user = db.session.query(RegisteredUser).filter_by(user_id=current_user.user_id).first()
     is_premium = False
     if registered_user:
         # Then check if this RegisteredUser has a premium profile
         is_premium = db.session.query(PremiumUser).filter_by(registered_user_id=registered_user.registered_user_id).first() is not None
     
-    print(f"User is premium: {is_premium}")
+    if not is_premium:
+        print("User is not a premium user")
+        return render_template('citations/journal_finder_premium_required.html')
     
     # Import required modules
     import os
     import json
-    import re
     import string
     import time
     import traceback
@@ -768,13 +773,6 @@ def journal_finder():
     # Initialize variables for both GET and POST requests
     matching_journals = []
     submitted = False
-    
-    # Pass the is_premium flag to the template
-    template_vars = {
-        'is_premium': is_premium,
-        'matching_journals': matching_journals,
-        'submitted': submitted
-    }
     
     # Load journal data from JSON file
     journals = []
@@ -794,7 +792,7 @@ def journal_finder():
         return render_template('citations/journal_finder.html', 
                               matching_journals=[], 
                               submitted=False)
-                              
+    
     if not journals:
         flash('No journals available in the database', 'warning')
         return render_template('citations/journal_finder.html', 
@@ -895,7 +893,7 @@ def journal_finder():
                         try:
                             # Load model lazily (first time it's needed)
                             global model
-                            if not 'model' in globals() or model is None:
+                            if 'model' not in globals() or model is None:
                                 model = SentenceTransformer('all-MiniLM-L6-v2')
                             
                             # Generate embedding
@@ -948,19 +946,19 @@ def journal_finder():
                     similarities.sort(key=lambda x: x[1], reverse=True)
                     
                     # Process results with fallback mechanisms
-                    matching_journals = []
+                    matching_journal_tuples = []
                     threshold = 0.4  # Initial similarity threshold
                     
                     # First attempt: Use semantic similarity with default threshold
-                    matching_journals = [(j, s) for j, s in similarities if s >= threshold]
+                    matching_journal_tuples = [(j, s) for j, s in similarities if s >= threshold]
                     
                     # First fallback: Lower the threshold
-                    if not matching_journals:
+                    if not matching_journal_tuples:
                         threshold = 0.2  # Lower threshold
-                        matching_journals = [(j, s) for j, s in similarities if s >= threshold]
+                        matching_journal_tuples = [(j, s) for j, s in similarities if s >= threshold]
                     
                     # Second fallback: Try keyword overlap matching
-                    if not matching_journals:
+                    if not matching_journal_tuples:
                         # Extract keywords from the paper content
                         paper_keywords = set(extract_keywords(paper_content))
                         
@@ -975,21 +973,25 @@ def journal_finder():
                             if overlap > 0:
                                 keyword_matches.append((journal, overlap))
                         
-                        keyword_matches.sort(key=lambda x: x[1], reverse=True)
-                        matching_journals = keyword_matches
+                        # Sort by overlap
+                        if keyword_matches:
+                            keyword_matches.sort(key=lambda x: x[1], reverse=True)
+                            matching_journal_tuples = keyword_matches
                     
                     # Third fallback: Default to top journals by field similarity
-                    if not matching_journals:
-                        matching_journals = [(j, s) for j, s in similarities[:5]]
+                    if not matching_journal_tuples:
+                        matching_journal_tuples = [(j, s) for j, s in similarities[:5]]
                         flash('No close matches found based on your paper. Showing top journals in your field.', 'info')
                     
-                    # Format journal data for template rendering with similarity scores as attributes
+                    # Format journal data properly for template display
                     formatted_journals = []
-                    for journal, similarity in matching_journals:
-                        # Create a copy to avoid modifying original data
+                    for journal, similarity in matching_journal_tuples:
+                        # Create a copy of the journal dict to avoid modifying the original
                         j = journal.copy()
-                        # Add similarity score as a property of the journal
+                        
+                        # Add the match score as a property (convert to percentage)
                         j['match_score'] = similarity
+                        
                         # Ensure all required fields exist
                         if 'name' not in j:
                             j['name'] = 'Unknown Journal'
@@ -1001,11 +1003,15 @@ def journal_finder():
                             j['submit_link'] = '#'
                         if 'aims_scope_link' not in j:
                             j['aims_scope_link'] = '#'
+                        
+                        # Add to formatted results
                         formatted_journals.append(j)
+                    
+                    # Replace the tuple list with the formatted journals
                     matching_journals = formatted_journals
                     
                     # Limit results unless "show all" is selected
-                    if not show_all:
+                    if not show_all and len(matching_journals) > 3:
                         matching_journals = matching_journals[:3]
                     
                     # Measure elapsed time
@@ -1024,63 +1030,61 @@ def journal_finder():
             flash(f"Error processing your request: {str(e)}", 'danger')
             submitted = False  # Don't show results on error
     
-    # Update template variables with final results
-    template_vars.update({
-        'matching_journals': matching_journals,
-        'submitted': submitted
-    })
-    
     # Render template with results
-    return render_template('citations/journal_finder.html', **template_vars)
+    return render_template('citations/journal_finder.html',
+                          matching_journals=matching_journals,
+                          submitted=submitted)
+
+> @citation_bp.route('/api/citation/<int:paper_id>')
+  @login_required
+  def get_all_citations(paper_id):
+      """API endpoint to get all citation styles for a paper"""
+      paper = ResearchPaper.query.get_or_404(paper_id)
+      
+      # Prepare result dictionary
+      result = {
+          'paper_id': paper_id,
+          'paper_title': paper.title,
+          'citations': {},
+          'errors': {}
+      }
+      
+      # Check for existing citations or generate them
+      for style in CitationStyle:
+          try:
+              citation = Citation.query.filter_by(paper_id=paper_id, style=style).first()
+              if not citation:
+                  # Try to generate citation
+                  try:
+                      bibtex_string = generate_bibtex_from_paper(paper)
+                      citation = Citation(paper_id=paper_id, style=style, bibtex_string=bibtex_string)
+                      db.session.add(citation)
+                      db.session.commit()
+                  except Exception as gen_exc:
+                      current_app.logger.error(f"Failed to generate citation for paper {paper_id} style {style}: 
+{gen_exc}")
+                      result['errors'][style.value] = f"Generation failed: {gen_exc}"
+                      continue
+              # Format citation
+              if style == CitationStyle.APA:
+                  formatted_citation = format_bibtex_as_apa(citation.bibtex_string)
+              elif style == CitationStyle.MLA:
+                  formatted_citation = format_bibtex_as_mla(citation.bibtex_string)
+              elif style == CitationStyle.IEEE:
+                  formatted_citation = format_bibtex_as_ieee(citation.bibtex_string)
+              else:
+                  formatted_citation = "Unsupported citation style"
+              # Add to results
+              result['citations'][style.value] = {
+                  'citation_id': citation.id,
+                  'formatted_text': formatted_citation,
+                  'download_url': url_for('citation.download', citation_id=citation.id, _external=True),
+                  'copy_url': url_for('citation.copy', citation_id=citation.id, _external=True),
+                  'permalink': url_for('citation.view', citation_id=citation.id, _external=True)
+              }
+          except Exception as e:
+              current_app.logger.error(f"Citation error for paper {paper_id} style {style}: {e}")
+              result['errors'][style.value] = str(e)
+      return jsonify(result)
 
 
-@citation_bp.route('/api/citation/<int:paper_id>')
-@login_required
-def get_all_citations(paper_id):
-    """API endpoint to get all citation styles for a paper"""
-    paper = ResearchPaper.query.get_or_404(paper_id)
-    
-    # Prepare result dictionary
-    result = {
-        'paper_id': paper_id,
-        'paper_title': paper.title,
-        'citations': {},
-        'errors': {}
-    }
-    
-    # Check for existing citations or generate them
-    for style in CitationStyle:
-        try:
-            citation = Citation.query.filter_by(paper_id=paper_id, style=style).first()
-            if not citation:
-                # Try to generate citation
-                try:
-                    bibtex_string = generate_bibtex_from_paper(paper)
-                    citation = Citation(paper_id=paper_id, style=style, bibtex_string=bibtex_string)
-                    db.session.add(citation)
-                    db.session.commit()
-                except Exception as gen_exc:
-                    current_app.logger.error(f"Failed to generate citation for paper {paper_id} style {style}: {gen_exc}")
-                    result['errors'][style.value] = f"Generation failed: {gen_exc}"
-                    continue
-            # Format citation
-            if style == CitationStyle.APA:
-                formatted_citation = format_bibtex_as_apa(citation.bibtex_string)
-            elif style == CitationStyle.MLA:
-                formatted_citation = format_bibtex_as_mla(citation.bibtex_string)
-            elif style == CitationStyle.IEEE:
-                formatted_citation = format_bibtex_as_ieee(citation.bibtex_string)
-            else:
-                formatted_citation = "Unsupported citation style"
-            # Add to results
-            result['citations'][style.value] = {
-                'citation_id': citation.id,
-                'formatted_text': formatted_citation,
-                'download_url': url_for('citation.download', citation_id=citation.id, _external=True),
-                'copy_url': url_for('citation.copy', citation_id=citation.id, _external=True),
-                'permalink': url_for('citation.view', citation_id=citation.id, _external=True)
-            }
-        except Exception as e:
-            current_app.logger.error(f"Citation error for paper {paper_id} style {style}: {e}")
-            result['errors'][style.value] = str(e)
-    return jsonify(result)

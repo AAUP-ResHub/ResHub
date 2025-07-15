@@ -5,6 +5,7 @@ import enum
 
 # Import db from extensions to avoid circular imports
 from app.extensions import db
+from sqlalchemy.sql import func
 
 # --- Citation Styles ---
 class CitationStyle(enum.Enum):
@@ -55,6 +56,13 @@ class User(db.Model, UserMixin):
         # Used by Person 1's auth implementation
         return check_password_hash(self.password_hash, password)
 
+    @property
+    def has_premium(self):
+        """Check if the user has premium access"""
+        if not hasattr(self, 'registered_profile') or self.registered_profile is None:
+            return False
+        return hasattr(self.registered_profile, 'premium_profile') and self.registered_profile.premium_profile is not None
+
     def __repr__(self):
         return f'<User {self.username}>'
 
@@ -78,6 +86,9 @@ class RegisteredUser(db.Model):
     last_name = db.Column(db.String(100))
     profile_data = db.Column(db.Text)  # Semantic graph or personal info
     research_stats = db.Column(db.Text)  # Additional user analytics
+    research_interests = db.Column(db.Text)  # User's research interests
+    affiliation = db.Column(db.String(255))  # Academic or professional affiliation
+    orcid = db.Column(db.String(255))  # ORCID identifier
 
     # Relationship to User (one-to-one)
     user = db.relationship('User', backref=db.backref('registered_profile', uselist=False))
@@ -101,8 +112,7 @@ class PremiumUser(db.Model):
     registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False, unique=True)
     premium_since = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     additional_quota = db.Column(db.Integer)
-
-    # Relationship to RegisteredUser (one-to-one)
+    semantic_graph = db.Column(db.JSON)  # JSON column for storing topic vectors e.g., {"ai": 1, "nlp": 1}
     registered_user = db.relationship('RegisteredUser', backref=db.backref('premium_profile', uselist=False))
 
     def __repr__(self):
@@ -290,6 +300,31 @@ class RecommendationEngineConfig(db.Model):
 
     def __repr__(self):
         return f'<RecommendationEngineConfig {self.engine_id}: {self.algorithm_name}>'
+
+
+# --- Messaging System Models ---
+class Message(db.Model):
+    __tablename__ = 'messages'
+    message_id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    is_read = db.Column(db.Boolean, default=False)
+    parent_id = db.Column(db.Integer, db.ForeignKey('messages.message_id'), nullable=True)  # For threaded replies
+
+    # Relationships
+    sender = db.relationship('User', foreign_keys=[sender_id], backref=db.backref('sent_messages', lazy='dynamic'))
+    receiver = db.relationship('User', foreign_keys=[receiver_id], backref=db.backref('received_messages', lazy='dynamic'))
+    replies = db.relationship('Message', backref=db.backref('parent', remote_side=[message_id]), lazy='dynamic')
+
+    def __repr__(self):
+        return f'<Message {self.message_id}: {self.sender_id} to {self.receiver_id}>'
+
+
+
+# The first Notification class is kept since it's the one we're using in our code
+# The second Notification class definition (with user_id) has been removed to avoid conflicts
 
 
         #------------------------------------------------------------------------------
