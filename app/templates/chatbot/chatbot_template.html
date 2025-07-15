@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}ResHub AI Chatbot{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">ResHub AI Research Assistant</h5>
+                </div>
+                <div class="card-body p-0">
+                    <!-- Chatbot container - targeted by both implementations -->
+                    <div id="chatbot-container" class="chatbot-container">
+                        <!-- The chatbot UI will be rendered here -->
+                        <!-- If the component-based UI is disabled, legacy UI elements will be created by chatbot.js -->
+                        <!-- If enabled, new components will be rendered by App.js -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+
+<!-- Always load the legacy implementation -->
+<script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+
+<!-- Conditionally load the new component-based implementation -->
+{% if config.get('FEATURE_FLAGS', {}).get('USE_NEW_CHATBOT_UI', False) %}
+    <!-- When building with Vite in production, this will be the bundled output -->
+    <script type="module" src="{{ url_for('static', filename='dist/components/index.js') }}"></script>
+    
+    <!-- For development without building, use this instead -->
+    {% if config.get('FLASK_ENV') == 'development' %}
+        <script type="module">
+            // In development, we'll use the Vite dev server
+            import { initChatbotApp } from 'http://localhost:5173/components/ui/App.js';
+            
+            document.addEventListener('DOMContentLoaded', async () => {
+                console.log('Loading chatbot from dev server...');
+                const app = await initChatbotApp('chatbot-container');
+                if (app) {
+                    console.log('Development version loaded successfully');
+                }
+            });
+        </script>
+    {% endif %}
+{% endif %}
+{% endblock %}

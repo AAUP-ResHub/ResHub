@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+
+{% block title %}ResHub - Literature Research Assistant{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+<style>
+    /* Custom styles for enhanced UI */
+    .progress-pulse {
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 1; }
+        100% { opacity: 0.6; }
+    }
+    
+    .fade-in {
+        opacity: 0;
+        animation: fadeIn 0.5s forwards;
+    }
+    
+    @keyframes fadeIn {
+        to { opacity: 1; }
+    }
+    
+    .card {
+        transition: all 0.3s ease-in-out;
+    }
+    
+    .card:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    #answer-content, #citations-content, #extras-content {
+        transition: opacity 0.3s ease;
+    }
+    
+    textarea:focus, input:focus, select:focus {
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .shake {
+        animation: shake 0.5s;
+    }
+    
+    @keyframes shake {
+        0% { transform: translateX(0); }
+        20% { transform: translateX(-10px); }
+        40% { transform: translateX(10px); }
+        60% { transform: translateX(-5px); }
+        80% { transform: translateX(5px); }
+        100% { transform: translateX(0); }
+    }
+    
+    @media (max-width: 767.98px) {
+        .container {
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+    }
+    
+    /* Star rating styles */
+    .rating-stars {
+        font-size: 1.5rem;
+        display: flex;
+        justify-content: center;
+        gap: 0.25rem;
+    }
+    
+    .rating-stars i {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: #ccc;
+    }
+    
+    .rating-stars i:hover,
+    .rating-stars i.active {
+        color: #ffc107;
+        transform: scale(1.1);
+    }
+    
+    /* Chat history styles */
+    .chat-history-item {
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Toast container for notifications -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+    <div id="toast-container"></div>
+</div>
+
+<div class="container py-4">
+    <h1 class="mb-4">ResHub Literature Review Assistant</h1>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Ask a Research Question</h5>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="sessionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-clock-history"></i> Sessions
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" id="session-list" aria-labelledby="sessionDropdown">
+                            <li><a class="dropdown-item" href="#" data-session-id="{{ active_session.session_id }}" id="current-session">Current Session</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" id="new-session"><i class="bi bi-plus-circle"></i> New Session</a></li>
+                            <li><div class="dropdown-item text-center" id="loading-sessions"><span class="spinner-border spinner-border-sm" role="status"></span></div></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form id="chat-form">
+                        <div class="mb-3">
+                            <label for="prompt" class="form-label">Research Question</label>
+                            <textarea class="form-control" id="prompt" rows="3" 
+                                      placeholder="What are the latest developments in quantum computing?"
+                                      required></textarea>
+                            <div class="invalid-feedback">Please enter a research question.</div>
+                        </div>
+                        
+                        <div class="row g-3 align-items-center mb-3">
+                            <div class="col-md-6">
+                                <label for="year-filter" class="form-label">Publication Period</label>
+                                <input type="text" class="form-control" id="year-filter" 
+                                       placeholder="e.g., last 5 years, 2020-2023">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="citation-style" class="form-label">Citation Style</label>
+                                <select class="form-select" id="citation-style">
+                                    <option value="APA">APA</option>
+                                    <option value="MLA">MLA</option>
+                                    <option value="InlineURL">InlineURL</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary d-flex align-items-center" id="submit-btn">
+                            <span>Submit Question</span>
+                            <span class="spinner-border spinner-border-sm ms-2 d-none" id="submit-spinner" role="status" aria-hidden="true"></span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <div id="answer-container" class="card d-none animate__animated animate__fadeIn">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Answer</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary" id="copy-answer">
+                            <i class="bi bi-clipboard"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="answer-content"></div>
+                    <hr>
+                    <h6>Citations</h6>
+                    <div id="citations-content"></div>
+                    
+                    <div class="mt-3" id="extras-section">
+                        <h6>Additional Information</h6>
+                        <div id="extras-content"></div>
+                    </div>
+                    
+                    <div class="mt-3 text-center">
+                        <span class="me-2">Was this answer helpful?</span>
+                        <button class="btn btn-sm btn-outline-success me-2" id="thumbs-up">
+                            <i class="bi bi-hand-thumbs-up"></i> Yes
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" id="thumbs-down">
+                            <i class="bi bi-hand-thumbs-down"></i> No
+                        </button>
+                    </div>
+                    
+                    <!-- Detailed Feedback Form (hidden by default) -->
+                    <div class="mt-4 border-top pt-3 d-none" id="detailed-feedback-form">
+                        <h6 class="text-center">Please provide detailed feedback</h6>
+                        <form id="feedback-form">
+                            <input type="hidden" id="feedback-chat-id">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Relevance</label>
+                                    <div class="rating-stars" data-rating-for="relevance">
+                                        <i class="bi bi-star" data-value="1"></i>
+                                        <i class="bi bi-star" data-value="2"></i>
+                                        <i class="bi bi-star" data-value="3"></i>
+                                        <i class="bi bi-star" data-value="4"></i>
+                                        <i class="bi bi-star" data-value="5"></i>
+                                    </div>
+                                    <input type="hidden" id="relevance-rating" value="0">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Accuracy</label>
+                                    <div class="rating-stars" data-rating-for="accuracy">
+                                        <i class="bi bi-star" data-value="1"></i>
+                                        <i class="bi bi-star" data-value="2"></i>
+                                        <i class="bi bi-star" data-value="3"></i>
+                                        <i class="bi bi-star" data-value="4"></i>
+                                        <i class="bi bi-star" data-value="5"></i>
+                                    </div>
+                                    <input type="hidden" id="accuracy-rating" value="0">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Completeness</label>
+                                    <div class="rating-stars" data-rating-for="completeness">
+                                        <i class="bi bi-star" data-value="1"></i>
+                                        <i class="bi bi-star" data-value="2"></i>
+                                        <i class="bi bi-star" data-value="3"></i>
+                                        <i class="bi bi-star" data-value="4"></i>
+                                        <i class="bi bi-star" data-value="5"></i>
+                                    </div>
+                                    <input type="hidden" id="completeness-rating" value="0">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Overall</label>
+                                    <div class="rating-stars" data-rating-for="overall">
+                                        <i class="bi bi-star" data-value="1"></i>
+                                        <i class="bi bi-star" data-value="2"></i>
+                                        <i class="bi bi-star" data-value="3"></i>
+                                        <i class="bi bi-star" data-value="4"></i>
+                                        <i class="bi bi-star" data-value="5"></i>
+                                    </div>
+                                    <input type="hidden" id="overall-rating" value="0">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="feedback-text" class="form-label">Additional Comments (Optional)</label>
+                                <textarea class="form-control" id="feedback-text" rows="3" placeholder="Please share any specific feedback or suggestions..."></textarea>
+                            </div>
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-primary">Submit Feedback</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            {% if current_user.is_admin %}
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Admin Panel</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <a href="{{ url_for('chatbot.admin_metrics') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-chart-line me-2"></i> Metrics Dashboard
+                        </a>
+                        <a href="{{ url_for('chatbot.admin_vectors') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-database me-2"></i> Vector Database
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Chat History</h5>
+                    <span class="badge bg-info" id="session-title">{{ active_session.title }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="list-group" id="chat-history">
+                        {% if chat_history %}
+                            {% for chat in chat_history %}
+                            <button class="list-group-item list-group-item-action chat-history-item" 
+                                    data-chat-id="{{ chat.log_id }}">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1 text-truncate">{{ chat.user_prompt }}</h6>
+                                </div>
+                                <small>{{ chat.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </button>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted p-3">
+                                <i class="bi bi-chat-left-text" style="font-size: 1.5rem;"></i>
+                                <p class="mt-2">No chat history yet.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">How it Works</h5>
+                </div>
+                <div class="card-body">
+                    <p>The ResHub Literature Review Assistant helps you research academic topics by:</p>
+                    <ol>
+                        <li>Searching open-access repositories like arXiv, Semantic Scholar, and CORE</li>
+                        <li>Analyzing hundreds of relevant research papers</li>
+                        <li>Generating concise, properly cited answers to your questions</li>
+                    </ol>
+                    <p><strong>Tips for good questions:</strong></p>
+                    <ul>
+                        <li>Be specific about your research topic</li>
+                        <li>Include key terms relevant to your field</li>
+                        <li>Specify time periods if recent research is needed</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Expose critical functions to the window object for external scripts
+        console.log('Exposing global functions for chatbot.js');
+        
+        // Switch to a different session - required by external script
+        window.switchSession = function(sessionId, sessionTitle) {
+            // Update current session ID
+            const currentSessionElem = document.getElementById('current-session');
+            if (currentSessionElem) {
+                currentSessionElem.dataset.sessionId = sessionId;
+            }
+            
+            // Update session title
+            const sessionTitleElem = document.getElementById('session-title');
+            if (sessionTitleElem) {
+                sessionTitleElem.textContent = sessionTitle || 'Current Session';
+            }
+            
+            // Load chat history for this session
+            window.updateChatHistory(sessionId);
+            
+            // Show toast notification
+            window.showToast('Session Changed', 'Switched to different research session', 'info');
+        };
+        
+        // Update chat history display
+        window.updateChatHistory = function(sessionId) {
+            const chatHistoryContainer = document.getElementById('chat-history');
+            if (!chatHistoryContainer) {
+                console.error('Chat history container not found');
+                return;
+            }
+            
+            chatHistoryContainer.innerHTML = `
+                <div class="text-center p-3">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">Loading session history...</p>
+                </div>
+            `;
+            
+            // Fetch chat history for the session
+            fetch(`/chatbot/api/chat/history?session_id=${sessionId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.messages && data.messages.length > 0) {
+                        chatHistoryContainer.innerHTML = '';
+                        data.messages.forEach(message => {
+                            // Add message to chat history
+                            const messageElem = document.createElement('div');
+                            messageElem.className = 'chat-message p-3 mb-2 rounded';
+                            messageElem.classList.add(message.role === 'user' ? 'bg-light' : 'bg-primary text-white');
+                            messageElem.innerHTML = `<p class="mb-0">${message.content}</p>`;
+                            chatHistoryContainer.appendChild(messageElem);
+                        });
+                    } else {
+                        chatHistoryContainer.innerHTML = `
+                            <div class="text-center p-3">
+                                <p>No chat history for this session.</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading chat history:', error);
+                    chatHistoryContainer.innerHTML = `
+                        <div class="alert alert-danger">
+                            Failed to load chat history. Please try refreshing the page.
+                        </div>
+                    `;
+                });
+        };
+        
+        // Define showToast function for external file
+        window.showToast = function(title, message, type) {
+            console.log('Stub showToast called - implementation in external JS');
+        };
+        
+        // Expose loadSessions function to window for external script
+        window.loadSessions = function() {
+            console.log('Stub loadSessions called - implementation in external JS');
+        };
+        
+        // Make currentSessionId available as a global
+        window.currentSessionId = document.getElementById('current-session')?.dataset?.sessionId || '{{ active_session.id }}';
+    });
+</script>
+{% endblock %}
+
+{% block scripts_extra %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/chatbot.js') }}?v=2"></script>
+{% endblock scripts_extra %}

@@ -1,0 +1,9 @@
+2025-06-29 04:23:53,125 - __main__ - INFO - Starting test pipeline with query: 'machine learning', paper count: 2
+2025-06-29 04:23:53,470 - __main__ - ERROR - An error occurred during test: PDFProcessor.__init__() got an unexpected keyword argument 'store_path'
+Traceback (most recent call last):
+  File "C:\Users\Msi\ResHub\scripts\test_ingestion_pipeline.py", line 411, in main
+    run_test_pipeline(
+  File "C:\Users\Msi\ResHub\scripts\test_ingestion_pipeline.py", line 316, in run_test_pipeline
+    pdf_processor = PDFProcessor(store_path="app/static/uploads/pdf_store")
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: PDFProcessor.__init__() got an unexpected keyword argument 'store_path'

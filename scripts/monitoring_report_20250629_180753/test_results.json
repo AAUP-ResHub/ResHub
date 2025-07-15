@@ -1,0 +1,49 @@
+{
+  "timestamp": "2025-06-29T18:07:53.763292",
+  "query": "machine learning",
+  "paper_count": 2,
+  "batch_size": 1,
+  "delay": 2.0,
+  "processing_stats": {
+    "total": 2,
+    "processed": 2,
+    "success": 0,
+    "failed": 2,
+    "no_pdf": 0,
+    "chunks_generated": 0,
+    "papers": [
+      {
+        "id": null,
+        "title": "TRIPOD+AI statement: updated guidance for reporting clinical prediction models that use regression or machine learning methods",
+        "success": false,
+        "error": "No text chunks extracted",
+        "chunks": 0
+      },
+      {
+        "id": null,
+        "title": "Evaluation metrics and statistical tests for machine learning",
+        "success": false,
+        "error": "No text chunks extracted",
+        "chunks": 0
+      }
+    ]
+  },
+  "vector_store_verification": {
+    "total_papers": 2,
+    "found_in_vector_store": 0,
+    "missing_from_vector_store": 2,
+    "papers": [
+      {
+        "id": null,
+        "title": "TRIPOD+AI statement: updated guidance for reporting clinical prediction models that use regression or machine learning methods",
+        "found_in_vector_store": false
+      },
+      {
+        "id": null,
+        "title": "Evaluation metrics and statistical tests for machine learning",
+        "found_in_vector_store": false
+      }
+    ]
+  },
+  "monitoring_report": "C:\\Users\\Msi\\ResHub\\scripts\\monitoring_report_20250629_180753"
+}

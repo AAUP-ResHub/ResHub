@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # This service is your frontend live-reloading development server.
+  frontend:
+    container_name: reshub-frontend-dev
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    
+    # The volumes you had are good for development. They ensure your local
+    # code changes are reflected inside the container.
+    volumes:
+      - ./app/static/js/components:/app/app/static/js/components
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+      - ./vite.config.js:/app/vite.config.js
+      - ./vitest.config.js:/app/vitest.config.js
+      - ./test:/app/test
+      # We don't need to mount the 'dist' folder for the dev server.
+
+    # This command starts the Vite dev server with live reloading.
+    command: npm run dev
+    
+    # We add a networks block HERE to connect this service.
+    networks:
+      - reshub-network
+
+    environment:
+      - NODE_ENV=development
+    
+    # Expose the Vite dev server port to your computer.
+    ports:
+      - "5173:5173"
+
+# We must define the network at the root of THIS file.
+# 'external: true' tells Docker to use the network created by your main docker-compose.yml
+networks:
+  reshub-network:
+    external: true

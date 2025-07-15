@@ -1,0 +1,49 @@
+2025-06-29 18:07:34,920 - __main__ - INFO - Starting test pipeline with query: 'machine learning', paper count: 2
+2025-06-29 18:07:41,716 - __main__ - INFO - System monitoring started (interval: 5s)
+2025-06-29 18:07:41,716 - __main__ - INFO - Searching for papers with query: 'machine learning'
+2025-06-29 18:07:41,717 - app - INFO - SemanticScholar API call: search
+2025-06-29 18:07:41,717 - __main__ - WARNING - Health check status: critical:cpu
+2025-06-29 18:07:41,718 - app - INFO - Making Semantic Scholar API request: https://api.semanticscholar.org/graph/v1/paper/search
+2025-06-29 18:07:45,280 - app - INFO - SemanticScholar API usage: 1
+2025-06-29 18:07:45,280 - app - INFO - Found 2 papers from Semantic Scholar (total available: 529317)
+2025-06-29 18:07:45,280 - app - INFO - SemanticScholar API usage: 2
+2025-06-29 18:07:45,280 - __main__ - INFO - Found 2 papers for testing
+2025-06-29 18:07:45,280 - app - INFO - Processing PDF for paper: TRIPOD+AI statement: updated guidance for reporting clinical prediction models that use regression or machine learning methods
+2025-06-29 18:07:45,281 - app - INFO - Processing PDF from URL: https://www.bmj.com/content/bmj/385/bmj-2023-078378.full.pdf
+2025-06-29 18:07:45,281 - app - INFO - Downloading PDF (attempt 1/3)
+2025-06-29 18:07:46,839 - app - INFO - Saved PDF to app/static/uploads/pdf_store\ac3960a6645fedd53fcf9027e36c349f9d4192ca9e5d001f7b8913ebd3976e38.pdf
+2025-06-29 18:07:46,839 - app - INFO - Extracting text from PDF: app/static/uploads/pdf_store\ac3960a6645fedd53fcf9027e36c349f9d4192ca9e5d001f7b8913ebd3976e38.pdf
+2025-06-29 18:07:47,605 - app - INFO - Successfully created 15 chunks from app/static/uploads/pdf_store\ac3960a6645fedd53fcf9027e36c349f9d4192ca9e5d001f7b8913ebd3976e38.pdf
+2025-06-29 18:07:47,607 - app - INFO - Extracted 15 text chunks from C:\Users\Msi\AppData\Local\Temp\tmphad4mdkn.pdf
+2025-06-29 18:07:47,607 - app - ERROR - Error processing PDF C:\Users\Msi\AppData\Local\Temp\tmphad4mdkn.pdf: sequence item 0: expected str instance, dict found
+2025-06-29 18:07:47,607 - app - INFO - Successfully processed PDF from URL: https://www.bmj.com/content/bmj/385/bmj-2023-078378.full.pdf. Generated 0 chunks.
+2025-06-29 18:07:47,609 - app - WARNING - No text chunks extracted for TRIPOD+AI statement: updated guidance for reporting clinical prediction models that use regression or machine learning methods
+2025-06-29 18:07:47,609 - app - INFO - Processed batch 1/2: 0 successful, 1 failed
+2025-06-29 18:07:47,610 - app - INFO - Waiting 2.0 seconds before next batch
+2025-06-29 18:07:49,610 - app - INFO - Processing PDF for paper: Evaluation metrics and statistical tests for machine learning
+2025-06-29 18:07:49,611 - app - INFO - Processing PDF from URL: https://www.nature.com/articles/s41598-024-56706-x.pdf
+2025-06-29 18:07:49,611 - app - INFO - Downloading PDF (attempt 1/3)
+2025-06-29 18:07:51,930 - app - INFO - PDF already exists at app/static/uploads/pdf_store\7a08f990e60ecaf015857b6466fd5d8f858f2fb9f445cbd155582f52e60139fa.pdf
+2025-06-29 18:07:51,930 - app - INFO - Extracting text from PDF: app/static/uploads/pdf_store\7a08f990e60ecaf015857b6466fd5d8f858f2fb9f445cbd155582f52e60139fa.pdf
+2025-06-29 18:07:53,134 - app - INFO - Successfully created 15 chunks from app/static/uploads/pdf_store\7a08f990e60ecaf015857b6466fd5d8f858f2fb9f445cbd155582f52e60139fa.pdf
+2025-06-29 18:07:53,135 - app - INFO - Extracted 15 text chunks from C:\Users\Msi\AppData\Local\Temp\tmp8y2cx7xo.pdf
+2025-06-29 18:07:53,135 - app - ERROR - Error processing PDF C:\Users\Msi\AppData\Local\Temp\tmp8y2cx7xo.pdf: sequence item 0: expected str instance, dict found
+2025-06-29 18:07:53,135 - app - INFO - Successfully processed PDF from URL: https://www.nature.com/articles/s41598-024-56706-x.pdf. Generated 0 chunks.
+2025-06-29 18:07:53,137 - app - WARNING - No text chunks extracted for Evaluation metrics and statistical tests for machine learning
+2025-06-29 18:07:53,138 - app - INFO - Processed batch 2/2: 0 successful, 1 failed
+2025-06-29 18:07:53,138 - app - INFO - Finished processing 2 papers: 0 successful, 2 failed, 0 without PDFs, 0 chunks generated
+2025-06-29 18:07:53,138 - __main__ - INFO - Verifying vector store insertion...
+2025-06-29 18:07:53,145 - __main__ - INFO - Vector store verification complete: 0 of 2 papers found (0.0% success rate)
+2025-06-29 18:07:53,762 - __main__ - INFO - Monitoring report generated in: C:\Users\Msi\ResHub\scripts\monitoring_report_20250629_180753
+2025-06-29 18:07:53,762 - __main__ - INFO - ============================================================
+2025-06-29 18:07:53,763 - __main__ - INFO - TEST PIPELINE SUMMARY
+2025-06-29 18:07:53,763 - __main__ - INFO - ============================================================
+2025-06-29 18:07:53,763 - __main__ - INFO - Query: 'machine learning'
+2025-06-29 18:07:53,763 - __main__ - INFO - Papers processed: 2
+2025-06-29 18:07:53,763 - __main__ - INFO - Successfully processed: 0 (0.0% success rate)
+2025-06-29 18:07:53,763 - __main__ - INFO - Failed to process: 2
+2025-06-29 18:07:53,763 - __main__ - INFO - Papers without PDFs: 0
+2025-06-29 18:07:53,763 - __main__ - INFO - Total chunks generated: 0
+2025-06-29 18:07:53,763 - __main__ - INFO - Papers found in vector store: 0/2
+2025-06-29 18:07:53,763 - __main__ - INFO - Monitoring report: C:\Users\Msi\ResHub\scripts\monitoring_report_20250629_180753
+2025-06-29 18:07:53,764 - __main__ - INFO - System monitoring stopped

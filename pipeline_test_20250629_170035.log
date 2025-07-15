@@ -1,0 +1,48 @@
+2025-06-29 17:00:59,936 - __main__ - INFO - Starting test pipeline with query: 'machine learning', paper count: 2
+2025-06-29 17:01:07,569 - __main__ - INFO - System monitoring started (interval: 5s)
+2025-06-29 17:01:07,569 - __main__ - INFO - Searching for papers with query: 'machine learning'
+2025-06-29 17:01:07,569 - __main__ - ERROR - Error in monitoring: 'QuotaManager' object has no attribute 'get_remaining_quota'
+2025-06-29 17:01:07,570 - app - INFO - SemanticScholar API call: search
+2025-06-29 17:01:07,571 - app - INFO - Making Semantic Scholar API request: https://api.semanticscholar.org/graph/v1/paper/search
+2025-06-29 17:01:12,144 - app - INFO - SemanticScholar API usage: 1
+2025-06-29 17:01:12,144 - app - INFO - Found 2 papers from Semantic Scholar (total available: 529317)
+2025-06-29 17:01:12,147 - app - INFO - SemanticScholar API usage: 2
+2025-06-29 17:01:12,147 - __main__ - INFO - Found 2 papers for testing
+2025-06-29 17:01:12,147 - app - INFO - Processing PDF for paper: TRIPOD+AI statement: updated guidance for reporting clinical prediction models that use regression or machine learning methods
+2025-06-29 17:01:12,147 - app - INFO - Processing PDF from URL: https://www.bmj.com/content/bmj/385/bmj-2023-078378.full.pdf
+2025-06-29 17:01:12,147 - app - INFO - Downloading PDF (attempt 1/3)
+2025-06-29 17:01:12,571 - __main__ - ERROR - Error in monitoring: 'QuotaManager' object has no attribute 'get_remaining_quota'
+2025-06-29 17:01:13,535 - app - INFO - Saved PDF to app/static/uploads/pdf_store\85a0b25f73238c5d9e512577b190de8ba9a3d3de271103378ba3e96560a41738.pdf
+2025-06-29 17:01:13,535 - app - INFO - Extracting text from PDF: app/static/uploads/pdf_store\85a0b25f73238c5d9e512577b190de8ba9a3d3de271103378ba3e96560a41738.pdf
+2025-06-29 17:01:14,018 - app - INFO - Successfully created 15 chunks from app/static/uploads/pdf_store\85a0b25f73238c5d9e512577b190de8ba9a3d3de271103378ba3e96560a41738.pdf
+2025-06-29 17:01:14,018 - app - INFO - Extracted 15 text chunks from C:\Users\Msi\AppData\Local\Temp\tmpwqfcx5ik.pdf
+2025-06-29 17:01:14,018 - app - ERROR - Error processing PDF C:\Users\Msi\AppData\Local\Temp\tmpwqfcx5ik.pdf: sequence item 0: expected str instance, dict found
+2025-06-29 17:01:14,018 - app - INFO - Successfully processed PDF from URL: https://www.bmj.com/content/bmj/385/bmj-2023-078378.full.pdf. Generated 0 chunks.
+2025-06-29 17:01:14,021 - app - WARNING - No text chunks extracted for TRIPOD+AI statement: updated guidance for reporting clinical prediction models that use regression or machine learning methods
+2025-06-29 17:01:14,021 - app - INFO - Processed batch 1/2: 0 successful, 1 failed
+2025-06-29 17:01:14,021 - app - INFO - Waiting 2.0 seconds before next batch
+2025-06-29 17:01:16,022 - app - INFO - Processing PDF for paper: Evaluation metrics and statistical tests for machine learning
+2025-06-29 17:01:16,022 - app - INFO - Processing PDF from URL: https://www.nature.com/articles/s41598-024-56706-x.pdf
+2025-06-29 17:01:16,024 - app - INFO - Downloading PDF (attempt 1/3)
+2025-06-29 17:01:17,583 - __main__ - ERROR - Error in monitoring: 'QuotaManager' object has no attribute 'get_remaining_quota'
+2025-06-29 17:01:17,990 - app - INFO - Saved PDF to app/static/uploads/pdf_store\7a08f990e60ecaf015857b6466fd5d8f858f2fb9f445cbd155582f52e60139fa.pdf
+2025-06-29 17:01:17,990 - app - INFO - Extracting text from PDF: app/static/uploads/pdf_store\7a08f990e60ecaf015857b6466fd5d8f858f2fb9f445cbd155582f52e60139fa.pdf
+2025-06-29 17:01:18,891 - app - INFO - Successfully created 15 chunks from app/static/uploads/pdf_store\7a08f990e60ecaf015857b6466fd5d8f858f2fb9f445cbd155582f52e60139fa.pdf
+2025-06-29 17:01:18,891 - app - INFO - Extracted 15 text chunks from C:\Users\Msi\AppData\Local\Temp\tmp0p9f016e.pdf
+2025-06-29 17:01:18,893 - app - ERROR - Error processing PDF C:\Users\Msi\AppData\Local\Temp\tmp0p9f016e.pdf: sequence item 0: expected str instance, dict found
+2025-06-29 17:01:18,893 - app - INFO - Successfully processed PDF from URL: https://www.nature.com/articles/s41598-024-56706-x.pdf. Generated 0 chunks.
+2025-06-29 17:01:18,895 - app - WARNING - No text chunks extracted for Evaluation metrics and statistical tests for machine learning
+2025-06-29 17:01:18,895 - app - INFO - Processed batch 2/2: 0 successful, 1 failed
+2025-06-29 17:01:18,895 - app - INFO - Finished processing 2 papers: 0 successful, 2 failed, 0 without PDFs, 0 chunks generated
+2025-06-29 17:01:18,895 - __main__ - INFO - Verifying vector store insertion...
+2025-06-29 17:01:18,900 - __main__ - INFO - Vector store verification complete: 0 of 2 papers found (0.0% success rate)
+2025-06-29 17:01:20,316 - __main__ - ERROR - Error during test pipeline: list index out of range
+Traceback (most recent call last):
+  File "C:\Users\Msi\ResHub\scripts\test_ingestion_pipeline.py", line 357, in run_test_pipeline
+    report_dir = monitor.generate_monitoring_report()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Msi\ResHub\scripts\test_ingestion_pipeline.py", line 233, in generate_monitoring_report
+    f.write(f"Duration: {monitoring_data['timestamp'][-1]:.1f} seconds\n\n")
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^
+IndexError: list index out of range
+2025-06-29 17:01:20,317 - __main__ - INFO - System monitoring stopped

@@ -6,6 +6,46 @@ Flask-CORS==4.0.0
 Flask-SQLAlchemy==3.0.5
 Flask-Login==0.6.2
 Flask-Migrate==4.0.4
+<<<<<<< Updated upstream
+=======
+
+# Database dependencies
+SQLAlchemy==2.0.19
+psycopg2-binary==2.9.7  # PostgreSQL driver
+
+# Environment and configuration
+python-dotenv==1.0.0
+
+# Security dependencies
+PyJWT==2.8.0
+cryptography==41.0.3
+
+# Web server for production
+gunicorn==21.2.0
+
+# Vector database client
+qdrant-client==1.4.0
+
+# PDF processing
+PyPDF2==3.0.1
+langchain==0.0.267
+langchain-community==0.0.10
+tiktoken==0.5.1
+
+# API integrations
+openai==0.28.0
+requests==2.31.0
+
+# Utilities
+pydantic==2.0.3
+tqdm==4.66.1
+pandas==2.1.0
+matplotlib==3.7.2
+beautifulsoup4==4.12.2
+psutil==5.9.5
+
+# Formatting and content handling
+>>>>>>> Stashed changes
 markdown-it-py==3.0.0
 bleach==6.2.0
 mdurl==0.1.2

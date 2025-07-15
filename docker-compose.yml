@@ -1,0 +1,114 @@
+services:
+  web:
+    build: .
+    container_name: reshub-web
+    restart: always
+    env_file: .env
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/reshub
+      - VECTOR_DB_HOST=reshub-qdrant
+      - VECTOR_DB_PORT=6333
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    networks:
+      - reshub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+  db:
+    image: postgres:13
+    container_name: reshub-db
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=reshub
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - reshub-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:v1.10.0
+    container_name: reshub-qdrant
+    restart: always
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    networks:
+      - reshub-network
+    healthcheck:
+      test: ["CMD-SHELL", "cat /proc/net/tcp | grep -E ':18CD' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: reshub-n8n
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=reshub_admin_password
+      - N8N_HOST=n8n
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_PYTHON_ENABLED=true
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - reshub-network
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+networks:
+  reshub-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  qdrant_data:
+    driver: local
+    # No driver_opts, using the standard Docker volume approach for better reliability
+  n8n_data:
+    driver: local

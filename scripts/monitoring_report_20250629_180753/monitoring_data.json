@@ -1,0 +1,1 @@
+{"timestamp": [0.059130191802978516, 5.060383081436157, 10.064473628997803], "cpu_percent": [0.0, 15.3, 34.3], "memory_percent": [0.6854775887675852, 0.6922509162940634, 0.7006123064022383], "disk_usage": [64.9, 64.9, 64.9], "api_calls": [0, 0, 0], "quota_remaining": [5000, 4998, 4998], "process_status": [], "health_checks": ["critical:cpu", "healthy", "healthy"]}

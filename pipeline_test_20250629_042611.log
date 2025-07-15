@@ -1,0 +1,11 @@
+2025-06-29 04:26:22,439 - __main__ - INFO - Starting test pipeline with query: 'machine learning', paper count: 2
+2025-06-29 04:26:28,914 - __main__ - INFO - System monitoring started (interval: 5s)
+2025-06-29 04:26:28,914 - __main__ - ERROR - Error in monitoring: 'QuotaManager' object has no attribute 'get_remaining_quota'
+2025-06-29 04:26:28,914 - __main__ - INFO - Searching for papers with query: 'machine learning'
+2025-06-29 04:26:28,914 - app - INFO - SemanticScholar API call: search
+2025-06-29 04:26:28,914 - app - INFO - Making Semantic Scholar API request: https://api.semanticscholar.org/graph/v1/paper/search
+2025-06-29 04:26:32,274 - app - INFO - SemanticScholar API usage: 1
+2025-06-29 04:26:32,274 - app - INFO - Found 0 papers from Semantic Scholar (total available: 529317)
+2025-06-29 04:26:32,275 - app - INFO - SemanticScholar API usage: 2
+2025-06-29 04:26:32,275 - __main__ - ERROR - No papers found. Aborting test.
+2025-06-29 04:26:32,276 - __main__ - INFO - System monitoring stopped

@@ -1,0 +1,15 @@
+Monitoring Report: 2025-06-29 18:07:53
+Duration: 10.1 seconds
+
+Resource Usage (Average):
+  CPU: 16.5%
+  Memory: 0.7%
+  Disk: 64.9%
+
+API Usage:
+  Total API calls: 0
+  Final quota remaining: 4998
+
+Health Check Summary:
+  critical:cpu: 1 occurrences
+  healthy: 2 occurrences

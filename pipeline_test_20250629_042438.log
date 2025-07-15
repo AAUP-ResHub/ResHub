@@ -1,0 +1,9 @@
+2025-06-29 04:24:49,444 - __main__ - INFO - Starting test pipeline with query: 'machine learning', paper count: 2
+2025-06-29 04:24:56,337 - __main__ - ERROR - An error occurred during test: 'SemanticScholarFetcher' object has no attribute 'semantic_scholar_quota_manager'
+Traceback (most recent call last):
+  File "C:\Users\Msi\ResHub\scripts\test_ingestion_pipeline.py", line 411, in main
+    run_test_pipeline(
+  File "C:\Users\Msi\ResHub\scripts\test_ingestion_pipeline.py", line 320, in run_test_pipeline
+    quota_manager = fetcher.semantic_scholar_quota_manager
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'SemanticScholarFetcher' object has no attribute 'semantic_scholar_quota_manager'
