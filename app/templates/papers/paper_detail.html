@@ -36,6 +36,7 @@
                             {% if current_user.is_authenticated %}
                                 <div class="btn-group" role="group">
                                     <form action="{{ url_for('paper.download_paper', paper_id=paper.paper_id) }}" method="POST" style="display: inline;">
+                                        {{ form.csrf_token }}
                                         <button type="submit" class="btn btn-primary">
                                             <i class="bi bi-download"></i> Download PDF
                                         </button>
@@ -79,6 +80,7 @@
                                 <i class="bi bi-eye"></i> View in Full Screen
                             </a>
                             <form action="{{ url_for('paper.download_paper', paper_id=paper.paper_id) }}" method="POST" style="display: inline;">
+                                    {{ form.csrf_token }}
                                 <button type="submit" class="btn btn-primary">
                                     <i class="bi bi-download"></i> Download PDF
                                 </button>

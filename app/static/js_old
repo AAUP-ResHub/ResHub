@@ -1,0 +1,163 @@
+
+// app/static/js/workspace_editor.js
+
+document.addEventListener('DOMContentLoaded', function() {
+    const editorContainer = document.getElementById('editor-container');
+    if (!editorContainer) {
+        console.error('Editor container not found!');
+        return;
+    }
+
+    // --- 1. Initialize Quill Editor ---
+    const toolbarOptions = [
+        [{ 'header': [1, 2, 3, 4, false] }],
+        ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
+        ['blockquote', 'code-block'],
+
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
+        [{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
+
+        [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
+        [{ 'align': [] }],
+
+        ['link', 'image', 'video'],                       // link, image, video
+
+        ['clean']                                         // remove formatting button
+    ];
+
+    const quill = new Quill('#editor-container', {
+        modules: {
+            toolbar: toolbarOptions
+        },
+        theme: 'snow', // Use the 'snow' theme
+        placeholder: 'Start writing your collaborative document...'
+    });
+
+    // --- 2. Load Initial Content ---
+    const initialContentEl = document.getElementById('initial-content');
+    if (initialContentEl) {
+        const initialContent = initialContentEl.innerHTML;
+        // Use dangerouslyPasteHTML to load content from the database
+        // The 0 means paste at the beginning of the document.
+        if (initialContent && initialContent.trim().length > 0) {
+            try {
+                const contentObj = JSON.parse(initialContent);
+                quill.setContents(contentObj);
+            } catch (e) {
+                // If content can't be parsed as JSON Delta, paste it as HTML
+                quill.clipboard.dangerouslyPasteHTML(0, initialContent);
+            }
+        }
+    }
+    
+    // --- 3. Implement Autosave Logic ---
+    const docId = editorContainer.dataset.docId;
+    const saveStatusEl = document.getElementById('save-status');
+    const saveSpinner = document.getElementById('saving-spinner');
+    const documentTitle = document.getElementById('document-title');
+    const manualSaveBtn = document.getElementById('manual-save');
+    
+    let saveTimeout;
+    let lastSavedContent = '';
+
+    // Debounce function to limit how often saveDocument is called
+    const debounce = (func, delay) => {
+        return function(...args) {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => func.apply(this, args), delay);
+        };
+    };
+
+    const saveDocument = async () => {
+        if (!saveStatusEl) return;
+        
+        const content = quill.root.innerHTML;
+        
+        // Don't save if nothing has changed
+        if (content === lastSavedContent) {
+            return;
+        }
+        
+        // Show saving indicator
+        saveSpinner.style.display = 'inline-block';
+        saveStatusEl.textContent = 'Saving...';
+        saveStatusEl.style.color = '#888';
+
+        // Get CSRF token for AJAX requests
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        try {
+            const response = await fetch(`/documents/${docId}/save`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken 
+                },
+                body: JSON.stringify({ content: content })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server responded with status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            saveSpinner.style.display = 'none';
+            
+            if (data.status === 'success') {
+                lastSavedContent = content;
+                saveStatusEl.textContent = 'Last edited ' + new Date().toLocaleString();
+                
+                // Fade out the "Saved" message after a short delay
+                setTimeout(() => {
+                    saveStatusEl.style.opacity = 0.7;
+                }, 2000);
+            } else {
+                throw new Error(data.message || 'Failed to save.');
+            }
+
+        } catch (error) {
+            console.error('Error saving document:', error);
+            saveSpinner.style.display = 'none';
+            saveStatusEl.textContent = 'Save failed: ' + error.message;
+            saveStatusEl.style.color = '#dc3545'; // Red color for error
+        }
+    };
+
+    const debouncedSave = debounce(saveDocument, 2000); // Autosave 2 seconds after user stops typing
+
+    // Listen for changes in the editor
+    quill.on('text-change', (delta, oldDelta, source) => {
+        if (source === 'user') { // Only save when changes are made by the user
+            saveStatusEl.textContent = 'Unsaved changes';
+            saveStatusEl.style.color = '#888';
+            saveStatusEl.style.opacity = 1;
+            debouncedSave();
+        }
+    });
+
+    // Handle document title updates
+    documentTitle.addEventListener('blur', function() {
+        // Here you could add code to save the title when it changes
+        console.log('Title changed to: ' + documentTitle.value);
+        // You would need to create an API endpoint for this
+    });
+
+    // Manual save button
+    if (manualSaveBtn) {
+        manualSaveBtn.addEventListener('click', function() {
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveDocument();
+        });
+    }
+
+    // Save before leaving page
+    window.addEventListener('beforeunload', function(event) {
+        const currentContent = quill.root.innerHTML;
+        if (currentContent !== lastSavedContent) {
+            event.preventDefault();
+            event.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        }
+    });
+});

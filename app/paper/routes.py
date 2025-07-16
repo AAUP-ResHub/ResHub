@@ -4,6 +4,7 @@ from flask import render_template, redirect, url_for, flash, request, current_ap
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from sqlalchemy import desc
+from flask_wtf import FlaskForm
 
 from app.paper import paper_bp
 from app.models import ResearchPaper, PaperMetrics, RegisteredUser
@@ -26,6 +27,7 @@ def index():
 def paper_detail(paper_id):
     """Display detailed paper view"""
     paper = ResearchPaper.query.get_or_404(paper_id)
+    form = FlaskForm()  # Create a form instance for CSRF token
     
     # Only increment read_count if not the owner
     if current_user.is_authenticated:
@@ -42,7 +44,7 @@ def paper_detail(paper_id):
             paper.metrics.read_count += 1
             db.session.commit()
     
-    return render_template('papers/paper_detail.html', paper=paper)
+    return render_template('papers/paper_detail.html', paper=paper, form=form)
 
 @paper_bp.route('/new', methods=['GET', 'POST'])
 @login_required
@@ -155,7 +157,16 @@ def new_paper():
 @login_required
 def download_paper(paper_id):
     """Download a paper (only for logged-in users)"""
+    form = FlaskForm()
+    if not form.validate_on_submit():
+        return current_app.abort(400)  # Bad request if CSRF validation fails
+        
     paper = ResearchPaper.query.get_or_404(paper_id)
+    
+    # Check if the paper has a file path
+    if not paper.file_path:
+        flash('This paper does not have an associated PDF file.', 'warning')
+        return redirect(url_for('paper.paper_detail', paper_id=paper_id))
     
     # Only increment download count if not the owner
     # Check if user has a registered profile before accessing its attributes
@@ -197,7 +208,7 @@ def download_paper(paper_id):
     
     return response
 
-@paper_bp.route('/<int:paper_id>/view-in-browser')
+@paper_bp.route('/<int:paper_id>/view-in-browser', methods=['GET'])
 @login_required
 def view_in_browser(paper_id):
     """View a paper PDF directly in a new browser tab (only for logged-in users)"""

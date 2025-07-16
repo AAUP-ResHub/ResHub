@@ -6,6 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_cors import CORS
+from flask_wtf.csrf import CSRFProtect
 
 # Create extension objects
 from sqlalchemy.sql import text
@@ -24,6 +25,7 @@ class FixedSQLAlchemy(SQLAlchemy):
 db = FixedSQLAlchemy()
 login_manager = LoginManager()
 cors = CORS()
+csrf = CSRFProtect()
 
 # Configure login manager
 login_manager.login_view = 'auth.login'

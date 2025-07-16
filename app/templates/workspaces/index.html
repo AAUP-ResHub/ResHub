@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ title }}</h1>
+        <a href="{{ url_for('workspaces.create') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create Workspace
+        </a>
+    </div>
+
+    <!-- Workspaces I Own Section -->
+    <div class="mb-4">
+        <h2 class="mb-3">Workspaces I Own</h2>
+        {% if owned_workspaces %}
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            {% for workspace in owned_workspaces %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ workspace.title }}</h5>
+                            <p class="card-text text-muted small">
+                                Created: {{ workspace.created_at.strftime('%Y-%m-%d') }}
+                            </p>
+                            <p class="card-text">
+                                {% if workspace.description %}
+                                    {{ workspace.description|truncate(100) }}
+                                {% else %}
+                                    <span class="text-muted fst-italic">No description provided</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <a href="{{ url_for('workspaces.workspace_detail', workspace_id=workspace.workspace_id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-folder2-open"></i> Open
+                            </a>
+                            <!-- Delete Button -->
+                            <form method="POST" action="{{ url_for('workspaces.delete_workspace', workspace_id=workspace.workspace_id) }}" style="display:inline;">
+                                {{ delete_form.hidden_tag() }}
+                                <button type="submit" class="btn btn-sm btn-outline-danger ms-2"
+                                    onclick="return confirm('Are you sure you want to permanently delete the workspace \'{{ workspace.title }}\'? This action cannot be undone.')">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        {% else %}
+            <div class="card shadow-sm">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-folder2 fs-1 text-muted mb-3"></i>
+                    <h4>You don't own any workspaces yet</h4>
+                    <p class="text-muted">Create your first workspace to start collaborating on research.</p>
+                    <a href="{{ url_for('workspaces.create') }}" class="btn btn-primary mt-2">
+                        <i class="bi bi-plus-circle"></i> Create Workspace
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Workspaces I'm a Member Of Section -->
+    <div>
+        <h2 class="mb-3">Workspaces I'm a Member Of</h2>
+        {% if member_of_workspaces %}
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                {% for workspace in member_of_workspaces %}
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ workspace.title }}</h5>
+                                <p class="card-text text-muted small">
+                                    Created: {{ workspace.created_at.strftime('%Y-%m-%d') }}
+                                </p>
+                                <p class="card-text">
+                                    {% if workspace.description %}
+                                        {{ workspace.description|truncate(100) }}
+                                    {% else %}
+                                        <span class="text-muted fst-italic">No description provided</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <a href="{{ url_for('workspaces.workspace_detail', workspace_id=workspace.workspace_id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-folder2-open"></i> Open
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="card shadow-sm">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-people fs-1 text-muted mb-3"></i>
+                    <h4>You are not a member of any other workspaces</h4>
+                    <p class="text-muted">When others invite you to their workspaces, they will appear here.</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- JavaScript for modal removed - using browser's native confirm dialog instead -->
+{% endblock %}

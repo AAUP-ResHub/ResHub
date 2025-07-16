@@ -70,6 +70,7 @@
                         {% if current_user.is_admin %}
                         <li>
                             <form action="{{ url_for('forum.toggle_pin', post_id=post.post_id) }}" method="post" class="d-inline">
+                                {{ form.csrf_token }}
                                 <button type="submit" class="dropdown-item">
                                     <i class="bi bi-pin-angle"></i> Unpin
                                 </button>
@@ -80,6 +81,7 @@
                         <li>
                             <form action="{{ url_for('forum.delete_post', post_id=post.post_id) }}" method="post" class="d-inline"
                                   onsubmit="return confirm('Are you sure you want to delete this post? This cannot be undone.')">
+                                {{ form.csrf_token }}
                                 <button type="submit" class="dropdown-item text-danger">
                                     <i class="bi bi-trash"></i> Delete
                                 </button>
@@ -136,6 +138,7 @@
                         {% if current_user.is_admin %}
                         <li>
                             <form action="{{ url_for('forum.toggle_pin', post_id=post.post_id) }}" method="post" class="d-inline">
+                                {{ form.csrf_token }}
                                 <button type="submit" class="dropdown-item">
                                     <i class="bi bi-pin-angle"></i> Pin
                                 </button>
@@ -146,6 +149,7 @@
                         <li>
                             <form action="{{ url_for('forum.delete_post', post_id=post.post_id) }}" method="post" class="d-inline"
                                   onsubmit="return confirm('Are you sure you want to delete this post? This cannot be undone.')">
+                                {{ form.csrf_token }}
                                 <button type="submit" class="dropdown-item text-danger">
                                     <i class="bi bi-trash"></i> Delete
                                 </button>
@@ -295,6 +299,7 @@
         </div>
         <div class="card-body">
             <form action="{{ url_for('forum.reply', topic_id=topic.topic_id) }}" method="post">
+                {{ form.csrf_token }}
                 <div class="mb-3">
                     <label for="content" class="form-label">Your Reply</label>
                     <textarea class="form-control" id="content" name="content" rows="5" required></textarea>

@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('workspaces.index') }}">Workspaces</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ workspace.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ workspace.title }}</h1>
+        <a href="{{ url_for('workspaces.create_document', workspace_id=workspace.workspace_id) }}" class="btn btn-primary">
+            <i class="bi bi-file-earmark-plus"></i> New Document
+        </a>
+    </div>
+
+    {% if workspace.description %}
+        <p class="lead mb-4">{{ workspace.description }}</p>
+    {% endif %}
+
+    <!-- Members section -->
+    <div class="card mt-4 mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Members</h5>
+            
+            {# Show the Invite button only to the workspace owner #}
+            {% if is_owner %}
+            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#inviteMemberModal">
+                <i class="bi bi-person-plus-fill"></i> Invite Member
+            </button>
+            {% endif %}
+        </div>
+        <ul class="list-group list-group-flush">
+            {# Display the owner #}
+            <li class="list-group-item d-flex justify-content-between">
+                <span>{{ owner_details.username }}</span>
+                <span class="badge bg-primary rounded-pill">{{ owner_details.role }}</span>
+            </li>
+            {# Display other members #}
+            {% for member in members_details %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>{{ member.username }}</span>
+                <div>
+                    <span class="badge bg-secondary rounded-pill me-2">{{ member.role|capitalize }}</span>
+                    {% if is_owner %}
+                    <form method="POST" action="{{ url_for('workspaces.remove_workspace_member', workspace_id=workspace.workspace_id, member_id=member['id']) }}" 
+                          style="display:inline" onsubmit="return confirm('Are you sure you want to remove this member?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove member">
+                            <i class="bi bi-person-x"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+            {% if not members_details %}
+            <li class="list-group-item text-center text-muted">
+                <em>No additional members</em>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <!-- Documents section -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="card-title mb-0">Documents</h5>
+        </div>
+        <div class="card-body">
+            {% if documents %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Created</th>
+                                <th>Last Updated</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in documents %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('workspaces.view_document', workspace_id=workspace.workspace_id, doc_id=doc.id) }}">
+                                            {{ doc.title }}
+                                        </a>
+                                    </td>
+                                    <td><small class="text-muted">{{ doc.created_at.strftime('%Y-%m-%d') }}</small></td>
+                                    <td><small class="text-muted">{{ doc.updated_at.strftime('%Y-%m-%d') }}</small></td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('workspaces.view_document', workspace_id=workspace.workspace_id, doc_id=doc.id) }}" class="btn btn-outline-secondary">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('workspaces.edit_document', workspace_id=workspace.workspace_id, doc_id=doc.id) }}" class="btn btn-outline-primary">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-file-earmark-text fs-1 text-muted mb-3"></i>
+                    <h5>No documents yet</h5>
+                    <p class="text-muted">Create your first document to start collaborating.</p>
+                    <a href="{{ url_for('workspaces.create_document', workspace_id=workspace.workspace_id) }}" class="btn btn-primary mt-2">
+                        <i class="bi bi-file-earmark-plus"></i> New Document
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================== -->
+<!--            INVITE MEMBER MODAL (at end of template)                 -->
+<!-- ================================================================== -->
+{% if is_owner %}
+<div class="modal fade" id="inviteMemberModal" tabindex="-1" aria-labelledby="inviteMemberModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('workspaces.invite_member_to_workspace', workspace_id=workspace.workspace_id) }}">
+          {{ invite_form.hidden_tag() }} {# CSRF Token #}
+          <div class="modal-header">
+            <h5 class="modal-title" id="inviteMemberModalLabel">Invite a New Member to '{{ workspace.title }}'</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+                {{ invite_form.email_or_username.label(class="form-label") }}
+                {{ invite_form.email_or_username(class="form-control", placeholder="Enter username or email") }}
+            </div>
+            <div class="mb-3">
+                {{ invite_form.role.label(class="form-label") }}
+                {{ invite_form.role(class="form-select") }}
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            {{ invite_form.submit(class="btn btn-primary") }}
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -2,8 +2,11 @@ import os
 from flask import Flask
 
 # Import extensions
-from app.extensions import db, login_manager, cors
+from app.extensions import db, login_manager, cors, csrf
 from flask_migrate import Migrate
+
+# Import security configurations
+from app.config.security import configure_csp
 
 def create_app():
     app = Flask(__name__)
@@ -14,6 +17,7 @@ def create_app():
     # Initialize extensions
     db.init_app(app)
     cors.init_app(app)
+    csrf.init_app(app)
     
     # Initialize migrations
     migrate = Migrate(app, db)
@@ -31,8 +35,9 @@ def create_app():
     from app.forum import forum_bp
     from app.errors import errors_bp
     from app.search import search_bp
-    from app.citation import citation_bp
-    from app.api_routes import api_bp
+    from app.chatbot import chatbot_bp
+    from app.workspaces import workspaces_bp
+    # Preserving chatbot but using Teammate2's structure
     
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -40,14 +45,23 @@ def create_app():
     app.register_blueprint(forum_bp)
     app.register_blueprint(errors_bp)
     app.register_blueprint(search_bp, url_prefix='/search')
-    app.register_blueprint(citation_bp)
-    app.register_blueprint(api_bp)
+    app.register_blueprint(chatbot_bp)
+    app.register_blueprint(workspaces_bp)
+    # Registered blueprints following Teammate2's structure while preserving chatbot
     
-    # Context processor for template variables
+    # Context processors for template variables
     @app.context_processor
     def inject_year():
         from datetime import datetime, timezone
         return dict(current_year=datetime.now(timezone.utc).year)
+        
+    @app.context_processor
+    def inject_csrf_token():
+        from flask_wtf.csrf import generate_csrf
+        return dict(csrf_token=lambda: generate_csrf())
+    
+    # Apply security configurations
+    configure_csp(app)
     
     # Create database tables if they don't exist
     with app.app_context():
