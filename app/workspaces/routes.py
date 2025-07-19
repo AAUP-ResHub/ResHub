@@ -12,6 +12,49 @@ import os
 from app.utils.s3_utils import upload_file_to_s3
 from app.services.notification_service import notify_workspace_invite
 
+# This helper function will centralize all our permission logic.
+def check_workspace_permission(workspace, reg_user, required_role):
+    """
+    Checks if a user has the required permission level for a workspace.
+    Roles are hierarchical: Owner = Admin > Editor > Viewer.
+    Returns True if user has required permission, False otherwise.
+    """
+    if not reg_user:
+        return False
+
+    # The owner of the workspace has all permissions.
+    if workspace.owner_id == reg_user.registered_user_id:
+        return True
+
+    # Find the user's specific membership record for this workspace.
+    member_assoc = WorkspaceMember.query.filter_by(
+        workspace_id=workspace.workspace_id,
+        user_id=reg_user.registered_user_id
+    ).first()
+
+    # If the user is not the owner and not explicitly a member, they have no access.
+    if not member_assoc:
+        return False
+
+    user_role = member_assoc.role
+    
+    # Admin users have the same permissions as owners
+    if user_role.lower() == 'admin':
+        return True
+    
+    # Define the hierarchy of roles.
+    role_hierarchy = {
+        'viewer': 1,
+        'editor': 2,
+        'admin': 3
+    }
+
+    user_level = role_hierarchy.get(user_role.lower(), 0)
+    required_level = role_hierarchy.get(required_role.lower(), 0)
+    
+    # The user has permission if their level is greater than or equal to the required level.
+    return user_level >= required_level
+
 # Helper function to get current registered user
 def get_current_registered_user():
     return RegisteredUser.query.filter_by(user_id=current_user.user_id).first()
@@ -22,8 +65,17 @@ def delete_workspace_handler(workspace_id, reg_user):
     # Get the workspace
     workspace = Workspace.query.get_or_404(workspace_id)
     
-    # SECURITY CHECK: Only the owner can delete the workspace
-    if workspace.owner_id != reg_user.registered_user_id:
+    # SECURITY CHECK: Owner or admin can delete the workspace
+    # Check if user is a member with admin role
+    member = WorkspaceMember.query.filter_by(
+        workspace_id=workspace_id,
+        user_id=reg_user.registered_user_id
+    ).first()
+    
+    is_admin = member and member.role.lower() == 'admin'
+    is_owner = workspace.owner_id == reg_user.registered_user_id
+    
+    if not (is_owner or is_admin):
         flash('You do not have permission to delete this workspace.', 'danger')
         abort(403)
     
@@ -67,8 +119,17 @@ def index():
     user_profile = get_current_registered_user()
     
     if not user_profile:
-        flash('User profile not found', 'danger')
-        return redirect(url_for('main.index'))
+        # Create a RegisteredUser profile for this user if one doesn't exist
+        try:
+            user_profile = RegisteredUser(user_id=current_user.user_id)
+            db.session.add(user_profile)
+            db.session.commit()
+            current_app.logger.info(f"Created RegisteredUser profile for user {current_user.username}")
+        except Exception as e:
+            current_app.logger.error(f"Error creating RegisteredUser profile: {str(e)}")
+            db.session.rollback()
+            flash('Error creating user profile', 'danger')
+            return redirect(url_for('main.index'))
     
     # Handle DELETE request from the delete form
     if request.method == 'POST':
@@ -160,6 +221,8 @@ def create():
     return render_template('workspaces/create.html', title="Create Workspace")
 
 
+
+
 @workspaces_bp.route('/<int:workspace_id>', methods=['GET'])
 @login_required
 def workspace_detail(workspace_id):
@@ -171,17 +234,13 @@ def workspace_detail(workspace_id):
 
     workspace = Workspace.query.get_or_404(workspace_id)
     
-    # Authorization check (user must be a member to view)
-    is_member = WorkspaceMember.query.filter_by(
-        workspace_id=workspace_id,
-        user_id=reg_user.registered_user_id
-    ).first() is not None
-    
-    is_owner = workspace.owner_id == reg_user.registered_user_id
-    
-    if not (is_member or is_owner):
+    # PERMISSION CHECK: User must at least be a viewer.
+    if not check_workspace_permission(workspace, reg_user, 'viewer'):
         flash('You do not have permission to view this workspace', 'danger')
         return redirect(url_for('workspaces.index'))
+    
+    # Keep track of whether the user is the owner for UI purposes
+    is_owner = workspace.owner_id == reg_user.registered_user_id
     
     # 1. Instantiate the form for inviting members
     invite_form = InviteMemberForm()
@@ -210,6 +269,21 @@ def workspace_detail(workspace_id):
     # Form for creating new documents
     create_document_form = CreateDocumentForm()
     
+    # Determine the user's role for this workspace
+    user_role = 'owner' if is_owner else 'viewer'  # default to viewer
+    if not is_owner:
+        member_assoc = WorkspaceMember.query.filter_by(
+            workspace_id=workspace.workspace_id,
+            user_id=reg_user.registered_user_id
+        ).first()
+        if member_assoc:
+            user_role = member_assoc.role.lower()
+    
+    # Check permissions for UI elements
+    can_edit = check_workspace_permission(workspace, reg_user, 'editor')
+    can_invite = check_workspace_permission(workspace, reg_user, 'admin')
+    can_delete = is_owner  # Only owner can delete workspace
+    
     # Pass all data to the template
     return render_template('workspaces/workspace_detail.html', 
                            workspace=workspace,
@@ -219,6 +293,10 @@ def workspace_detail(workspace_id):
                            documents=documents,
                            create_document_form=create_document_form,
                            is_owner=is_owner,
+                           user_role=user_role,
+                           can_edit=can_edit,
+                           can_invite=can_invite,
+                           can_delete=can_delete,
                            title=workspace.title)
 
 
@@ -234,19 +312,12 @@ def create_document(workspace_id):
     
     if not user_profile:
         flash('User profile not found', 'danger')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
     
-    # Check if user is a member or owner
-    is_member = WorkspaceMember.query.filter_by(
-        workspace_id=workspace_id,
-        user_id=user_profile.registered_user_id
-    ).first() is not None
-    
-    is_owner = workspace.owner_id == user_profile.registered_user_id
-    
-    if not (is_member or is_owner):
-        flash('You do not have permission to create documents in this workspace', 'danger')
-        return redirect(url_for('workspaces.index'))
+    # Check if user has at least 'editor' permission to create documents
+    if not check_workspace_permission(workspace, user_profile, 'editor'):
+        flash('You need Editor permissions or higher to create documents in this workspace', 'danger')
+        return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
     
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
@@ -254,7 +325,8 @@ def create_document(workspace_id):
         
         if not title:
             flash('Document title is required', 'danger')
-            return render_template('workspaces/create_document.html', workspace=workspace, title="Create Document")
+            # Redirect back to workspace detail instead of showing the form again
+            return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
         
         try:
             document = WorkspaceDocument(
@@ -270,12 +342,13 @@ def create_document(workspace_id):
             db.session.commit()
             
             flash('Document created successfully', 'success')
-            return redirect(url_for('workspaces.view_document', workspace_id=workspace_id, doc_id=document.id))
+            return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
             
         except SQLAlchemyError as e:
             db.session.rollback()
             current_app.logger.error(f"Database error creating document: {str(e)}")
             flash('Error creating document', 'danger')
+            return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
     
     return render_template('workspaces/create_document.html', workspace=workspace, title="Create Document")
 
@@ -296,32 +369,47 @@ def view_document(workspace_id, doc_id):
     workspace = Workspace.query.get_or_404(workspace_id)
     
     # Get the current user's registered user profile
-    user_profile = RegisteredUser.query.filter_by(user_id=current_user.user_id).first()
+    reg_user = get_current_registered_user()
     
-    if not user_profile:
+    if not reg_user:
         flash('User profile not found', 'danger')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
     
     # Check if user is a member or owner
-    is_member = WorkspaceMember.query.filter_by(
+    member_record = WorkspaceMember.query.filter_by(
         workspace_id=workspace_id,
-        user_id=user_profile.registered_user_id
-    ).first() is not None
+        user_id=reg_user.registered_user_id
+    ).first()
     
-    is_owner = workspace.owner_id == user_profile.registered_user_id
+    is_member = member_record is not None
+    is_owner = workspace.owner_id == reg_user.registered_user_id
     
     if not (is_member or is_owner):
         flash('You do not have permission to view this document', 'danger')
         return redirect(url_for('workspaces.index'))
     
+    # Determine permission level
+    user_role = 'owner' if is_owner else (member_record.role if member_record else 'none')
+    can_edit = check_workspace_permission(workspace, reg_user, 'editor')
+    
+    # Get all documents in this workspace for the sidebar
+    all_workspace_documents = WorkspaceDocument.query.filter_by(workspace_id=workspace_id).order_by(WorkspaceDocument.created_at.desc()).all()
+    
     # Instantiate the form for file uploads
     upload_form = UploadFileForm()
+    
+    # Form for creating new documents
+    create_document_form = CreateDocumentForm()
     
     return render_template('workspaces/document_view.html', 
                            workspace=workspace,
                            document=document,
+                           all_documents=all_workspace_documents,
                            is_owner=is_owner,
+                           user_role=user_role,
+                           can_edit=can_edit,
                            upload_form=upload_form,
+                           create_document_form=create_document_form,
                            title=document.title)
 
 
@@ -345,19 +433,24 @@ def edit_document(workspace_id, doc_id):
     
     if not user_profile:
         flash('User profile not found', 'danger')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
     
     # Check if user is a member or owner
-    is_member = WorkspaceMember.query.filter_by(
+    member_record = WorkspaceMember.query.filter_by(
         workspace_id=workspace_id,
         user_id=user_profile.registered_user_id
-    ).first() is not None
+    ).first()
     
+    is_member = member_record is not None
     is_owner = workspace.owner_id == user_profile.registered_user_id
     
     if not (is_member or is_owner):
-        flash('You do not have permission to edit this document', 'danger')
+        flash('You do not have permission to view this document', 'danger')
         return redirect(url_for('workspaces.index'))
+    
+    # Determine permission level
+    user_role = 'owner' if is_owner else (member_record.role if member_record else 'none')
+    can_edit = check_workspace_permission(workspace, user_profile, 'editor')
     
     # Create an upload form for document attachments
     upload_form = UploadFileForm()
@@ -367,6 +460,8 @@ def edit_document(workspace_id, doc_id):
                           workspace=workspace, 
                           document=document, 
                           upload_form=upload_form,
+                          user_role=user_role,
+                          can_edit=can_edit,
                           title=f"Edit: {document.title}")
 
 
@@ -385,7 +480,10 @@ def upload_file(workspace_id=None):
     
     if not reg_user_uploader:
         flash('User profile not found', 'danger')
-        return redirect(url_for('main.index'))
+        if workspace_id:
+            return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
+        else:
+            return redirect(url_for('workspaces.index'))
     
     # Determine the context (workspace or document)
     if doc_id:
@@ -396,20 +494,13 @@ def upload_file(workspace_id=None):
         workspace = Workspace.query.get_or_404(workspace_id)
         doc = None
     
-    # Check if user is a member or owner of the workspace
-    is_member = WorkspaceMember.query.filter_by(
-        workspace_id=workspace_id,
-        user_id=reg_user_uploader.registered_user_id
-    ).first() is not None
-    
-    is_owner = workspace.owner_id == reg_user_uploader.registered_user_id
-    
-    if not (is_member or is_owner):
+    # PERMISSION CHECK: User must be an editor, admin, or owner to upload.
+    if not check_workspace_permission(workspace, reg_user_uploader, 'editor'):
         flash('You do not have permission to upload files to this workspace', 'danger')
         if doc_id:
-            return redirect(url_for('main.index'))
+            return redirect(url_for('workspaces.view_document', workspace_id=workspace_id, doc_id=doc_id))
         else:
-            return redirect(url_for('workspaces.index'))
+            return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
     
     form = UploadFileForm()
     if form.validate_on_submit():
@@ -479,7 +570,7 @@ def download_workspace_file(workspace_id, file_id):
     
     if not user_profile:
         flash('User profile not found', 'danger')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
     
     # Check if user is a member or owner
     is_member = WorkspaceMember.query.filter_by(
@@ -535,9 +626,9 @@ def invite_member_to_workspace(workspace_id):
         flash('Your user profile was not found', 'danger')
         return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
     
-    # Check if user is the owner (only owners can invite)
-    if workspace.owner_id != inviter.registered_user_id:
-        flash('Only workspace owners can invite members', 'warning')
+    # PERMISSION CHECK: User must be an admin or owner to invite.
+    if not check_workspace_permission(workspace, inviter, 'admin'):
+        flash('You do not have permission to invite new members.', 'danger')
         return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
     
     form = InviteMemberForm()
@@ -618,10 +709,10 @@ def remove_workspace_member(workspace_id, member_id):
     reg_user = get_current_registered_user()
     if not reg_user:
         flash('User profile not found', 'danger')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
     
-    # Security check: Only the owner can remove members
-    if workspace.owner_id != reg_user.registered_user_id:
+    # PERMISSION CHECK: Only admins and owners can remove members
+    if not check_workspace_permission(workspace, reg_user, 'admin'):
         flash('You do not have permission to remove members from this workspace.', 'danger')
         return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
     
@@ -689,13 +780,20 @@ def delete_document(workspace_id, doc_id):
     user_profile = get_current_registered_user()
     if not user_profile:
         flash('User profile not found', 'danger')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('workspaces.workspace_detail', workspace_id=workspace_id))
     
-    # SECURITY CHECK: Only the workspace owner or document author can delete the document
+    # SECURITY CHECK: Workspace owners, admins, or document authors can delete the document
     is_owner = workspace.owner_id == user_profile.registered_user_id
     is_author = document.author_id == user_profile.registered_user_id
     
-    if not (is_owner or is_author):
+    # Check if user is a workspace admin
+    member = WorkspaceMember.query.filter_by(
+        workspace_id=workspace_id,
+        user_id=user_profile.registered_user_id
+    ).first()
+    is_admin = member and member.role.lower() == 'admin'
+    
+    if not (is_owner or is_author or is_admin):
         flash('You do not have permission to delete this document', 'danger')
         return redirect(url_for('workspaces.view_document', workspace_id=workspace_id, doc_id=doc_id))
     
@@ -740,15 +838,8 @@ def save_document_content(workspace_id, doc_id):
             'message': 'User profile not found'
         }), 403
     
-    # Check if user is a member or owner
-    is_member = WorkspaceMember.query.filter_by(
-        workspace_id=workspace_id,
-        user_id=user_profile.registered_user_id
-    ).first() is not None
-    
-    is_owner = workspace.owner_id == user_profile.registered_user_id
-    
-    if not (is_member or is_owner):
+    # PERMISSION CHECK: User must be an editor, admin, or owner to save changes.
+    if not check_workspace_permission(workspace, user_profile, 'editor'):
         return jsonify({
             'status': 'error',
             'message': 'You do not have permission to edit this document'

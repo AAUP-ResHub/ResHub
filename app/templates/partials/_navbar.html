@@ -15,11 +15,18 @@
         <li class="nav-item">
           <a class="nav-link" href="{{ url_for('forum.index') }}">Forums</a>
         </li>
-        {% if current_user.is_authenticated %}
+        {# ================================================================== #}
+        {#          CONDITIONAL WORKSPACE LINK (in _navbar.html)            #}
+        {# ================================================================== #}
         <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('workspaces.index') }}">Workspaces</a>
+            {% if current_user.is_authenticated %}
+                {# If user is logged in, this is a normal link to their workspaces #}
+                <a class="nav-link" href="{{ url_for('workspaces.index') }}">Workspaces</a>
+            {% else %}
+                {# If user is NOT logged in, this link triggers the modal instead of navigating #}
+                <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#loginRequiredModal">Workspaces</a>
+            {% endif %}
         </li>
-        {% endif %}
         <li class="nav-item">
           <a class="nav-link" href="/about">About</a>
         </li>

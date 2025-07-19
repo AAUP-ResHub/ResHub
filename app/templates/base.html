@@ -29,6 +29,20 @@
 <body>
     {% include 'partials/_navbar.html' %}
     
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="container mt-3">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    
     <div class="container py-4">
         {% block content %}{% endblock %}
     </div>
@@ -62,5 +76,27 @@
     
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
     {% block scripts_extra %}{% endblock %}
+
+    <!-- ================================================================== -->
+    <!--          LOGIN/REGISTER REQUIRED MODAL (add before </body>)        -->
+    <!-- ================================================================== -->
+    <div class="modal fade" id="loginRequiredModal" tabindex="-1" aria-labelledby="loginRequiredModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="loginRequiredModalLabel">Authentication Required</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Please log in or create an account to access this feature.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary">Register</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login</a>
+          </div>
+        </div>
+      </div>
+    </div>
 </body>
 </html>

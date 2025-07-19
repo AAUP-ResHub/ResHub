@@ -1,0 +1,45 @@
+{% extends 'admin/base.html' %}
+
+{% block head_css %}
+    {{ super() }}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
+{% endblock %}
+
+{% block head %}
+    {{ super() }}
+    <!-- Ensure jQuery is loaded first and only once -->
+    <script>
+        // Check if jQuery is already defined to avoid conflicts
+        if (typeof window.jQuery === 'undefined') {
+            document.write('<script src="{{ url_for("admin.static", filename="vendor/jquery.min.js") }}"><' + '/script>');
+        }
+    </script>
+{% endblock %}
+
+{% block brand %}
+    <span class="navbar-brand">
+        <a href="{{ url_for('main.index') }}" class="brand">{{ admin_view.admin.name }}</a>
+    </span>
+{% endblock %}
+
+{% block page_body %}
+{{ super() }}
+{% endblock %}
+
+{% block tail_js %}
+    {{ super() }}
+    
+    <!-- Initialize popovers -->
+    <script>
+        $(document).ready(function() {
+            // Initialize tooltips
+            $('[data-toggle="tooltip"]').tooltip();
+            
+            // Initialize popovers
+            $('[data-toggle="popover"]').popover({
+                trigger: 'hover',
+                placement: 'auto'
+            });
+        });
+    </script>
+{% endblock %}

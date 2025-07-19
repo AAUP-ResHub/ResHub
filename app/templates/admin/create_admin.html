@@ -1,0 +1,108 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+<div class="container py-4">
+    <h2 class="mb-4">Create New Admin Profile</h2>
+    
+    {% if error %}
+    <div class="alert alert-danger" role="alert">
+        {{ error }}
+    </div>
+    {% endif %}
+    
+    {% if success %}
+    <div class="alert alert-success" role="alert">
+        {{ success }}
+    </div>
+    {% endif %}
+    
+    <div class="card">
+        <div class="card-body">
+            <!-- Add novalidate to prevent browser validation which can trigger autofill -->
+            <form method="POST" autocomplete="off" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                
+                <!-- Add a honeypot field to trick browsers' autofill -->
+                <div style="display:none;">
+                    <input type="text" id="preventAutofill" name="preventAutofill" autocomplete="chrome-off" />
+                    <input type="password" id="preventAutofillPass" name="preventAutofillPass" autocomplete="chrome-off" />
+                </div>
+                
+                <div class="form-group mb-3">
+                    <label for="username">Username</label>
+                    <!-- Use readonly then remove it with JS to prevent autofill -->
+                    <input type="text" class="form-control" id="username" name="username" 
+                           autocomplete="new-username" autocorrect="off" autocapitalize="off"
+                           readonly onfocus="this.removeAttribute('readonly');"
+                           value="" required style="background-color: #ffffff;">
+                    {% if form.username.errors %}
+                    <div class="text-danger">
+                        {% for error in form.username.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group mb-3">
+                    <label for="email">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" 
+                           autocomplete="new-email" autocorrect="off" autocapitalize="off"
+                           readonly onfocus="this.removeAttribute('readonly');"
+                           value="" required style="background-color: #ffffff;">
+                    {% if form.email.errors %}
+                    <div class="text-danger">
+                        {% for error in form.email.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group mb-3">
+                    <label for="password">Password</label>
+                    <input type="password" class="form-control" id="password" name="password" 
+                           autocomplete="new-password" required style="background-color: #ffffff;">
+                    {% if form.password.errors %}
+                    <div class="text-danger">
+                        {% for error in form.password.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group mb-3">
+                    <label for="confirm_password">Confirm Password</label>
+                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" 
+                           autocomplete="new-password" required style="background-color: #ffffff;">
+                    {% if form.confirm_password.errors %}
+                    <div class="text-danger">
+                        {% for error in form.confirm_password.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Create Admin Account</button>
+                    <a href="{{ url_for('admin.index') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block tail %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Clear any form fields that might have been autofilled
+        document.getElementById('username').value = '';
+        document.getElementById('email').value = '';
+        document.getElementById('password').value = '';
+        document.getElementById('confirm_password').value = '';
+    });
+</script>
+{% endblock %}

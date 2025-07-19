@@ -6,7 +6,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!editorContainer) {
         return; 
     }
-
+    
+    // Check if user has edit permissions
+    const canEdit = editorContainer.dataset.canEdit === 'true';
+    const userRole = editorContainer.dataset.userRole;
+    
     try {
         // Define a rich toolbar for a Notion-like experience
         const toolbarOptions = [
@@ -20,10 +24,14 @@ document.addEventListener('DOMContentLoaded', function() {
             ['clean']
         ];
 
+        // Configure Quill based on user permissions
         const quill = new Quill('#editor-container', {
-            modules: { toolbar: toolbarOptions },
-            theme: 'snow', // 'snow' is a clean, modern theme
-            placeholder: 'This document has no content. Start writing...'
+            modules: { 
+                toolbar: canEdit ? toolbarOptions : false // Only show toolbar for users with edit permissions
+            },
+            theme: 'snow',
+            placeholder: canEdit ? 'This document has no content. Start writing...' : 'This document has no content.',
+            readOnly: !canEdit // Make it read-only for viewers
         });
 
         // Load any existing content from the database into the editor
@@ -47,6 +55,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const saveStatusEl = document.getElementById('save-status');
         let saveTimeout;
+        
+        // If user doesn't have edit permissions, hide the save status element
+        if (!canEdit && saveStatusEl) {
+            saveStatusEl.style.display = 'none';
+        }
 
         // Debounce function limits how often we call the save API
         const debounce = (func, delay) => {

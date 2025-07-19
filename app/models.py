@@ -13,6 +13,7 @@ class User(db.Model, UserMixin):
     password_hash = db.Column(db.String(256), nullable=False)  # Store hashes, not plain text
     email = db.Column(db.String(120), unique=True, nullable=False)
     user_type = db.Column(db.String(50), nullable=False)  # e.g., 'admin', 'registered'
+    is_suspended = db.Column(db.Boolean, default=False, nullable=False)
     
     def get_id(self):
         # Flask-Login requires this method
@@ -41,6 +42,12 @@ class User(db.Model, UserMixin):
                   password_hash=generate_password_hash(password),
                   user_type='registered')
         db.session.add(user)
+        db.session.flush()  # Flush to get the user_id without committing
+        
+        # Create corresponding RegisteredUser profile
+        registered_user = RegisteredUser(user_id=user.user_id)
+        db.session.add(registered_user)
+        
         db.session.commit()
         return user
     
@@ -241,7 +248,10 @@ class WorkspaceDocument(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)  # Column is 'author_id', not 'creator_id'
     
     # Relationships
-    workspace = db.relationship('CollaborationWorkspace', backref=db.backref('documents', lazy='dynamic'))
+    workspace = db.relationship('CollaborationWorkspace', 
+                               backref=db.backref('documents', 
+                                                 lazy='dynamic', 
+                                                 cascade="all, delete-orphan"))
     author = db.relationship('RegisteredUser', backref=db.backref('authored_documents', lazy='dynamic'))
     attachments = db.relationship('WorkspaceFile', backref='document', lazy='dynamic',
                                foreign_keys='WorkspaceFile.document_id', cascade="all, delete-orphan")  # Updated relationship name
@@ -340,3 +350,26 @@ def downgrade():
     op.execute('DROP TRIGGER IF EXISTS research_papers_ai;')
     op.execute('DROP TABLE IF EXISTS research_papers_fts;')
 """
+
+# --- Site Settings for Admin Management ---
+class SiteSetting(db.Model):
+    __tablename__ = 'site_settings'
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    value = db.Column(db.Text, nullable=True)
+    description = db.Column(db.Text, nullable=True)
+
+    def __repr__(self):
+        return f'<SiteSetting {self.key}>'
+
+# --- Navigation Menu for Admin Management ---
+class NavigationMenuItem(db.Model):
+    __tablename__ = 'navigation_menu_items'
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.String(50), nullable=False)
+    endpoint = db.Column(db.String(80), nullable=False)
+    order = db.Column(db.Integer, nullable=False, default=0, index=True)
+    is_visible = db.Column(db.Boolean, nullable=False, default=True, index=True)
+
+    def __repr__(self):
+        return f'<NavigationMenuItem {self.text}>'

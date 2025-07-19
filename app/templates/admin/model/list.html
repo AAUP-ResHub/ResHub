@@ -1,0 +1,228 @@
+{% extends 'admin/master.html' %}
+{% import 'admin/lib.html' as lib with context %}
+{% import 'admin/static.html' as admin_static with context %}
+{% import 'admin/model/layout.html' as model_layout with context %}
+{% import 'admin/actions.html' as actionlib with context %}
+{% import 'admin/model/row_actions.html' as row_actions with context %}
+
+{% block head %}
+    {{ super() }}
+    {{ lib.form_css() }}
+{% endblock %}
+
+{% block body %}
+    <ul class="nav nav-tabs actions-nav">
+        <li class="nav-item">
+            <a class="nav-link" href="{{ return_url }}">{{ _gettext('List') }}{% if count %} ({{ count }}){% endif %}</a>
+        </li>
+        
+        {% if actions %}
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="javascript:void(0)" role="button" aria-haspopup="true" aria-expanded="false">{{ _gettext('With selected') }}</a>
+            <div class="dropdown-menu dropdown-menu-right" role="menu">
+                {% for p in actions %}
+                <a class="dropdown-item" href="javascript:void(0)" onclick="actionSubmit('{{ p[0] }}');">{{ _gettext(p[1]) }}</a>
+                {% endfor %}
+            </div>
+        </li>
+        {% endif %}
+        
+        {% if search_supported %}
+        <li class="nav-item ml-auto">
+            {{ model_layout.search_form() }}
+        </li>
+        {% endif %}
+    </ul>
+
+    {% block model_list_table %}
+    <div class="table-responsive">
+    <form id="action_form" action="{{ url_for('.action_view') }}" method="post">
+        {% if csrf_token %}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        {% endif %}
+        <!-- Add required hidden field for action -->
+        <input type="hidden" name="action" value="" />
+        
+        <table class="table table-striped table-bordered table-hover model-list">
+            <thead>
+                <tr>
+                    {% block list_header scoped %}
+                        {% if actions %}
+                        <th class="list-checkbox-column">
+                            <input type="checkbox" name="rowtoggle" class="action-rowtoggle" title="{{ _gettext('Select all records') }}" />
+                        </th>
+                        {% endif %}
+                        {% block list_row_actions_header %}
+                        <th class="col-md-1">&nbsp;</th>
+                        {% endblock %}
+                        {% for c, name in list_columns %}
+                        {% set column = loop.index0 %}
+                        <th class="column-header col-{{c}}" data-column-name="{{ name }}">
+                            {% if admin_view.is_sortable(c) %}
+                                {% if sort_column == column %}
+                                    <a href="{{ sort_url(column, True) }}" title="{{ _gettext('Sort by %(name)s', name=name) }}">
+                                        {{ name }}
+                                        {% if sort_desc %}
+                                            <i class="fa fa-chevron-up fa-fw"></i>
+                                        {% else %}
+                                            <i class="fa fa-chevron-down fa-fw"></i>
+                                        {% endif %}
+                                    </a>
+                                {% else %}
+                                    <a href="{{ sort_url(column) }}" title="{{ _gettext('Sort by %(name)s', name=name) }}">{{ name }}</a>
+                                {% endif %}
+                            {% else %}
+                                {{ name }}
+                            {% endif %}
+                            {% if admin_view.column_descriptions.get(c) %}
+                                <a href="javascript:void(0)" 
+                                   data-toggle="tooltip" 
+                                   data-placement="bottom"
+                                   title="{{ admin_view.column_descriptions[c] }}"
+                                   aria-label="{{ admin_view.column_descriptions[c] }}"
+                                   ></a>
+                            {% endif %}
+                        </th>
+                        {% endfor %}
+                    {% endblock %}
+                </tr>
+            </thead>
+            {% for row in data %}
+            <tr>
+                {% block list_row scoped %}
+                    {% if actions %}
+                    <td>
+                        <input type="checkbox" name="rowid" class="action-checkbox" value="{{ get_pk_value(row) }}" title="{{ _gettext('Select record') }}" />
+                    </td>
+                    {% endif %}
+                    {% block list_row_actions_column scoped %}
+                    <td class="list-buttons-column">
+                        {% block list_row_actions scoped %}
+                            {% if admin_view.can_delete %}
+                            <form action="{{ get_url('.delete_view', id=get_pk_value(row), url=return_url) }}" method="POST" style="display: inline">
+                                <input type="hidden" name="id" value="{{ get_pk_value(row) }}" />
+                                <input type="hidden" name="url" value="{{ return_url }}" />
+                                {% if csrf_token %}
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                {% endif %}
+                                <button onclick="return confirm('Are you sure you want to delete this item?');" 
+                                        class="btn btn-link btn-sm p-0 border-0" 
+                                        title="{{ _gettext('Delete record') }}">
+                                    <i class="fa fa-trash text-danger"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% if admin_view.can_view_details %}
+                            <a class="icon" href="{{ get_url('.details_view', id=get_pk_value(row), url=return_url) }}" title="{{ _gettext('View record') }}">
+                                <i class="fa fa-eye"></i>
+                            </a>
+                            {% endif %}
+                        {% endblock %}
+                    </td>
+                    {% endblock %}
+                    
+                    {% for c, name in list_columns %}
+                        <td class="col-{{c}}">
+                        {% if admin_view.is_editable(c) %}
+                            {% set form = list_forms[get_pk_value(row)] %}
+                            {% if form.csrf_token %}
+                            {{ form[c](pk=get_pk_value(row), display_value=get_value(row, c), csrf=form.csrf_token._value()) }}
+                            {% else %}
+                            {{ form[c](pk=get_pk_value(row), display_value=get_value(row, c)) }}
+                            {% endif %}
+                        {% else %}
+                            {{ get_value(row, c) }}
+                        {% endif %}
+                        </td>
+                    {% endfor %}
+                {% endblock %}
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="999">
+                    {% block empty_list_message %}
+                    <div class="text-center">
+                        {{ admin_view.get_empty_list_message() }}
+                    </div>
+                    {% endblock %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        
+        {# Batch action form inputs #}
+        <input type="hidden" name="url" value="{{ return_url }}" />
+    </form>
+    </div>
+    {% block list_pager %}
+    {% if num_pages is not none %}
+    {{ lib.pager(page, num_pages, pager_url) }}
+    {% else %}
+    {{ lib.simple_pager(page, data|length == page_size, pager_url) }}
+    {% endif %}
+    {% endblock %}
+    {% endblock %}
+
+    {# Add JavaScript to ensure form is properly submitted #}
+    <script>
+    // Function to handle action button clicks
+    function actionSubmit(action) {
+        // Check if any checkboxes are selected
+        var hasSelection = false;
+        var checkboxes = document.querySelectorAll('.action-checkbox');
+        checkboxes.forEach(function(checkbox) {
+            if (checkbox.checked) {
+                hasSelection = true;
+            }
+        });
+        
+        if (!hasSelection) {
+            alert("{{ _gettext('Please select at least one record.') }}");
+            return false;
+        }
+        
+        // Confirm action
+        if (confirm("{{ _gettext('Are you sure you want to perform this action?') }}")) {
+            // Set the action value in the form
+            var actionInput = document.querySelector('input[name="action"]');
+            actionInput.value = action;
+            
+            // Submit the form
+            document.getElementById('action_form').submit();
+        }
+        
+        return false;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle select all functionality
+        var selectAllCheckbox = document.querySelector('.action-rowtoggle');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('click', function() {
+                var isChecked = this.checked;
+                var rowCheckboxes = document.querySelectorAll('.action-checkbox');
+                rowCheckboxes.forEach(function(checkbox) {
+                    checkbox.checked = isChecked;
+                });
+            });
+        }
+        
+        // Update header checkbox when individual checkboxes change
+        var rowCheckboxes = document.querySelectorAll('.action-checkbox');
+        rowCheckboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('click', function() {
+                var selectAllCheckbox = document.querySelector('.action-rowtoggle');
+                if (selectAllCheckbox) {
+                    var allChecked = true;
+                    rowCheckboxes.forEach(function(cb) {
+                        if (!cb.checked) {
+                            allChecked = false;
+                        }
+                    });
+                    selectAllCheckbox.checked = allChecked;
+                }
+            });
+        });
+    });
+    </script>
+{% endblock %}

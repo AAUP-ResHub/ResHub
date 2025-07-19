@@ -1,0 +1,15 @@
+{% macro search_form() %}
+<form method="GET" action="{{ url_for(admin_view.endpoint + '.index_view') }}" class="form-inline my-2 my-lg-0" role="search">
+    {% for arg in request.args if arg != 'search' and arg != 'page' %}
+        <input type="hidden" name="{{ arg }}" value="{{ request.args.get(arg) }}" />
+    {% endfor %}
+    <div class="input-group">
+        <input name="search" type="text" class="form-control" placeholder="{{ _gettext('Search') }}" value="{{ request.args.get('search', '') }}" aria-label="{{ _gettext('Search') }}">
+        <div class="input-group-append">
+            <button class="btn btn-outline-secondary" type="submit" title="{{ _gettext('Search') }}">
+                <i class="fa fa-search"></i>
+            </button>
+        </div>
+    </div>
+</form>
+{% endmacro %}
