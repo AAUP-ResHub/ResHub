@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from .models import User
+import json
+from .models import User, RegisteredUser, db
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -36,10 +37,24 @@ def register():
         user = User.create_user(username, email, password)
         
         if user:
-            # Log in the user after registration
-            login_user(user)
-            flash('Registration successful!', 'success')
-            return redirect(url_for('main.index'))
+            # Create associated RegisteredUser profile
+            try:
+                # Initialize profile_data with proper JSON structure
+                profile_data = json.dumps({
+                    "research_interests": ""
+                })
+                registered_user = RegisteredUser(user_id=user.user_id, profile_data=profile_data)
+                db.session.add(registered_user)
+                db.session.commit()
+                
+                # Log in the user after registration
+                login_user(user)
+                flash('Registration successful!', 'success')
+                return redirect(url_for('main.index'))
+            except Exception as e:
+                # Rollback user creation if RegisteredUser creation fails
+                db.session.rollback()
+                flash('Failed to create user profile', 'error')
         else:
             flash('Failed to create user', 'error')
     

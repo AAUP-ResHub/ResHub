@@ -37,7 +37,12 @@ def create_app():
     from app.search import search_bp
     from app.chatbot import chatbot_bp
     from app.workspaces import workspaces_bp
-    # Preserving chatbot but using Teammate2's structure
+    from app.routes.notification_routes import notification_bp
+    from app.routes.notification_test_route import notification_test_bp
+    from app.routes.integration_test_route import integration_test_bp
+    # Import new blueprints from teammate1
+    from app.citation import citation_bp
+    from app.messaging import messaging_bp
     
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -47,7 +52,12 @@ def create_app():
     app.register_blueprint(search_bp, url_prefix='/search')
     app.register_blueprint(chatbot_bp)
     app.register_blueprint(workspaces_bp)
-    # Registered blueprints following Teammate2's structure while preserving chatbot
+    app.register_blueprint(notification_bp)
+    app.register_blueprint(notification_test_bp)
+    app.register_blueprint(integration_test_bp)
+    # Register new blueprints from teammate1
+    app.register_blueprint(citation_bp, url_prefix='/citation')
+    app.register_blueprint(messaging_bp, url_prefix='/messaging')
     
     # Context processors for template variables
     @app.context_processor

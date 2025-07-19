@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+
+{% block title %}Messages with {{ other_user.username }} | ResHub{% endblock %}
+
+{% block head_extra %}
+<style>
+    .chat-container {
+        height: 60vh;
+        overflow-y: auto;
+        padding: 1rem;
+        background-color: #f8f9fa;
+    }
+    .message-bubble {
+        max-width: 70%;
+        margin-bottom: 1rem;
+        position: relative;
+    }
+    .message-sent {
+        margin-left: auto;
+        margin-right: 0;
+    }
+    .message-sent .card {
+        background-color: #007bff;
+        color: white;
+        border: none;
+    }
+    .message-received .card {
+        background-color: white;
+        border: 1px solid #dee2e6;
+    }
+    .message-time {
+        font-size: 0.7rem;
+        margin-top: 4px;
+        opacity: 0.8;
+    }
+    .seen-indicator {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-top: 5px;
+        text-align: right;
+    }
+
+    .avatar-sm {
+        width: 32px;
+        height: 32px;
+        margin-right: 8px;
+    }
+    .message-header {
+        font-size: 0.75rem;
+        margin-bottom: 5px;
+    }
+    .typing-indicator {
+        color: #6c757d;
+        font-size: 0.8rem;
+        padding: 5px 0;
+        display: none;
+    }
+    .message-actions {
+        visibility: hidden;
+        position: absolute;
+        right: 10px;
+        top: 5px;
+    }
+    .message-bubble:hover .message-actions {
+        visibility: visible;
+    }
+    .message-received .message-actions {
+        right: auto;
+        left: 10px;
+    }
+    .message-form {
+        margin-top: 1rem;
+    }
+    .load-more {
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    .edit-mode textarea {
+        background-color: rgba(255, 255, 255, 0.9);
+        color: #000;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    {% if other_user.registered_profile and other_user.registered_profile.profile_photo_url %}
+                        <img src="{{ other_user.registered_profile.profile_photo_url }}" alt="{{ other_user.username }}" class="rounded-circle avatar-sm">
+                    {% else %}
+                        {% set first_name = other_user.registered_profile.first_name if other_user.registered_profile else 'U' %}
+                        {% set last_name = other_user.registered_profile.last_name if other_user.registered_profile else '' %}
+                        <img src="https://ui-avatars.com/api/?name={{ first_name }}+{{ last_name }}&size=32&background=4a6fa5&color=fff" alt="{{ other_user.username }}" class="rounded-circle avatar-sm">
+                    {% endif %}
+                    <h5 class="mb-0 ms-2">{{ other_user.username }}</h5>
+                </div>
+                <a href="{{ url_for('messaging.inbox') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Inbox
+                </a>
+            </div>
+            
+            <div class="card-body p-0">
+                <div id="typing-indicator" class="typing-indicator ps-3 py-2 border-bottom">
+                    {{ other_user.username }} is typing...
+                </div>
+                
+                <div class="chat-container" id="chat-container">
+                    {% if messages.items %}
+                        {% if messages.has_prev %}
+                            <div class="load-more">
+                                <a href="{{ url_for('messaging.messages', user_id=other_user.user_id, page=messages.prev_num) }}" class="btn btn-sm btn-outline-primary">
+                                    Load More
+                                </a>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="messages-list">
+                            {% for message in messages.items %}
+                                <div class="message-container" id="message-{{ message.message_id }}">
+                                    <div class="message-bubble {% if message.sender_id == current_user.user_id %}message-sent{% else %}message-received{% endif %}">
+                                        <div class="message-actions">
+                                            {% if message.sender_id == current_user.user_id %}
+                                                <button class="btn btn-sm btn-link text-white edit-message-btn" data-message-id="{{ message.message_id }}">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                            {% endif %}
+                                            <button class="btn btn-sm btn-link {% if message.sender_id == current_user.user_id %}text-white{% endif %} delete-message-btn" data-message-id="{{ message.message_id }}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        
+                                        <div class="card">
+                                            <div class="card-body">
+                                                {% if message.sender_id != current_user.user_id %}
+                                                    <div class="message-header">{{ other_user.username }}</div>
+                                                {% endif %}
+                                                
+                                                <div class="message-content">
+                                                    {{ message.content }}
+                                                </div>
+                                                
+                                                <div class="message-time" data-timestamp="{{ message.timestamp.isoformat() }}">
+                                                    {{ message.timestamp.strftime('%I:%M %p') }}
+                                                </div>
+                                                
+                                                {% if message.sender_id == current_user.user_id and message.is_read %}
+                                                    <div class="seen-indicator">Seen</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <p>No messages yet. Start the conversation!</p>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="message-form p-3 border-top">
+                    <form id="send-message-form" action="{{ url_for('messaging.send_message') }}" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="receiver_ids[]" value="{{ other_user.user_id }}">
+                        <div class="input-group">
+                            <textarea class="form-control" id="message-content" name="content" placeholder="Type a message..." rows="2"></textarea>
+                            <div class="input-group-append">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="bi bi-send"></i> Send
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for deleting messages -->
+<div class="modal fade" id="deleteMessageModal" tabindex="-1" aria-labelledby="deleteMessageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteMessageModalLabel">Delete Message</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this message? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="delete-message-form" action="" method="post">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<!-- Include the messaging.js file -->
+<script src="{{ url_for('static', filename='js/messaging.js') }}"></script>
+{% endblock %}

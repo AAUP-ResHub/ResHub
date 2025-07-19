@@ -230,8 +230,14 @@ def view_in_browser(paper_id):
 def user_papers(user_id):
     """Display papers uploaded by a specific user"""
     page = request.args.get('page', 1, type=int)
-    user = RegisteredUser.query.get_or_404(user_id)
-    papers = ResearchPaper.query.filter_by(owner_registered_user_id=user_id) \
+    
+    # Handle both User.user_id and RegisteredUser.registered_user_id
+    user = RegisteredUser.query.filter_by(user_id=user_id).first()
+    if not user:
+        # Fallback: treat as registered_user_id (for existing templates)
+        user = RegisteredUser.query.get_or_404(user_id)
+    
+    papers = ResearchPaper.query.filter_by(owner_registered_user_id=user.registered_user_id) \
         .order_by(desc(ResearchPaper.publish_date)) \
         .paginate(page=page, per_page=10, error_out=False)
     

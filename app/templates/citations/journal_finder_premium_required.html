@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Journal Finder - Premium Required{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Journal Finder</h4>
+                </div>
+                <div class="card-body text-center py-5">
+                    <div class="display-1 text-muted mb-4">
+                        <i class="bi bi-lock"></i>
+                    </div>
+                    <h2 class="mb-4">Premium Feature Required</h2>
+                    <div class="lead mb-4">
+                        This feature is available for Premium users only. Upgrade your account to unlock advanced journal recommendations.
+                    </div>
+                    <div class="mt-4">
+                        <a href="{{ url_for('paper.index') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-left me-2"></i>Browse Papers
+                        </a>
+                        <a href="{{ url_for('main.pricing') }}" class="btn btn-primary ms-2">
+                            <i class="bi bi-star-fill me-2"></i>See Plans
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

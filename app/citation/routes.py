@@ -1,11 +1,24 @@
 from datetime import datetime
 from io import StringIO, BytesIO
+import numpy as np
 from flask import render_template, redirect, url_for, flash, request, jsonify, send_file, abort, current_app
 from flask_login import login_required, current_user
+
+# Import sentence_transformers with error handling
+try:
+    from sentence_transformers import SentenceTransformer
+    SEMANTIC_SEARCH_ENABLED = True
+except ImportError as e:
+    SEMANTIC_SEARCH_ENABLED = False
+    SentenceTransformer = None
+    print(f"Warning: Sentence transformers not available: {e}")
+
+from typing import Dict, List, Any, Tuple
 from sqlalchemy.exc import IntegrityError
+from werkzeug.utils import secure_filename
 
 from app.citation import citation_bp
-from app.models import Citation, CitationStyle, ResearchPaper
+from app.models import User, RegisteredUser, PremiumUser, ResearchPaper, Citation, CitationStyle
 from app.extensions import db
 
 import pybtex.database
@@ -15,6 +28,93 @@ from pybtex.style.template import field, join, words, optional, sentence
 
 # Dictionary to map citation styles to their formatters
 CITATION_FORMATTERS = {}
+
+# Initialize sentence transformer model with caching
+_model = None
+_journal_embeddings_cache = {}
+
+def get_model():
+    """Lazy load the sentence transformer model"""
+    global _model
+    if not SEMANTIC_SEARCH_ENABLED:
+        print("WARNING: Sentence transformers not available - semantic search disabled")
+        return None
+        
+    if _model is None:
+        try:
+            print("Loading sentence transformer model 'all-MiniLM-L6-v2'...")
+            _model = SentenceTransformer('all-MiniLM-L6-v2')
+            print(f"Model loaded successfully: {type(_model).__name__}")
+        except Exception as e:
+            print(f"ERROR LOADING MODEL: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            _model = None
+    return _model
+
+def get_text_embedding(text: str) -> np.ndarray:
+    """Get embedding for a text string"""
+    if not text or not isinstance(text, str) or len(text.strip()) == 0:
+        print("WARNING: Empty or invalid text provided for embedding")
+        return None
+        
+    model = get_model()
+    if model is None:
+        print("WARNING: Model not available for embedding")
+        return None
+    
+    try:
+        # Truncate very long texts to avoid memory issues
+        if len(text) > 10000:
+            print(f"Text too long ({len(text)} chars), truncating to 10000 chars")
+            text = text[:10000]
+            
+        print(f"Encoding text of length {len(text)}")
+        embedding = model.encode(text, convert_to_numpy=True)
+        print(f"Successfully created embedding with shape {embedding.shape}")
+        return embedding
+    except Exception as e:
+        print(f"ERROR encoding text: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def get_journal_embedding(journal: Dict[str, Any]) -> np.ndarray:
+    """Get embedding for a journal, with caching"""
+    global _journal_embeddings_cache
+    journal_id = journal.get('id', journal.get('name', ''))
+    
+    # Return cached embedding if available
+    if journal_id in _journal_embeddings_cache:
+        return _journal_embeddings_cache[journal_id]
+    
+    # Prepare text for embedding
+    text = f"{journal.get('name', '')} {journal.get('field', '')} {journal.get('scope_description', '')}"
+    
+    # Get embedding
+    embedding = get_text_embedding(text)
+    
+    # Cache the embedding
+    if embedding is not None:
+        _journal_embeddings_cache[journal_id] = embedding
+        
+    return embedding
+
+def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
+    """Calculate cosine similarity between two vectors"""
+    if a is None or b is None:
+        return 0.0
+        
+    # Normalize the vectors
+    a_norm = np.linalg.norm(a)
+    b_norm = np.linalg.norm(b)
+    
+    # Handle zero vectors
+    if a_norm == 0 or b_norm == 0:
+        return 0.0
+        
+    # Calculate cosine similarity
+    return np.dot(a, b) / (a_norm * b_norm)
 
 def format_bibtex_as_apa(bibtex_string):
     """
@@ -648,6 +748,306 @@ def edit_citation_metadata(paper_id):
             
     # GET request - show form with current values
     return render_template('citations/edit_metadata.html', paper=paper)
+
+@citation_bp.route('/journal-finder', methods=['GET', 'POST'])
+@login_required
+def journal_finder():
+    """Journal finder route for all users, with premium features"""
+    # Check if user is authenticated
+    if not current_user.is_authenticated:
+        flash('You need to log in to access this feature.', 'warning')
+        return redirect(url_for('auth.login'))
+    
+    # Check if user is premium
+    registered_user = db.session.query(RegisteredUser).filter_by(user_id=current_user.user_id).first()
+    is_premium = False
+    if registered_user:
+        # Then check if this RegisteredUser has a premium profile
+        is_premium = db.session.query(PremiumUser).filter_by(registered_user_id=registered_user.registered_user_id).first() is not None
+    
+    print(f"User is premium: {is_premium}")
+    
+    # Import required modules
+    import os
+    import json
+    import re
+    import string
+    import time
+    import traceback
+    import numpy as np
+    from collections import Counter
+    from werkzeug.utils import secure_filename
+    
+    # Initialize variables for both GET and POST requests
+    matching_journals = []
+    submitted = False
+    
+    # Pass the is_premium flag to the template
+    template_vars = {
+        'is_premium': is_premium,
+        'matching_journals': matching_journals,
+        'submitted': submitted
+    }
+    
+    # Load journal data from JSON file
+    journals = []
+    try:
+        # Simplify the path construction to avoid OSErrors on Windows
+        base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        json_path = os.path.join(base_dir, 'journals.json')
+        
+        print(f"Loading journals from: {json_path}")
+        with open(json_path, 'r', encoding='utf-8') as f:
+            journals = json.load(f)
+        
+        print(f"Loaded {len(journals)} journals successfully")
+    except Exception as e:
+        print(f"ERROR loading journals: {str(e)}")
+        flash(f'Error loading journal data: {str(e)}. Please contact support.', 'danger')
+        return render_template('citations/journal_finder.html', 
+                              matching_journals=[], 
+                              submitted=False,
+                              is_premium=False)
+                              
+    if not journals:
+        flash('No journals available in the database', 'warning')
+        return render_template('citations/journal_finder.html', 
+                              matching_journals=[], 
+                              submitted=False,
+                              is_premium=False)
+    
+    # Process the form if submitted
+    if request.method == 'POST':
+        submitted = True
+        try:
+            # Get form data
+            title = request.form.get('title', '').strip()
+            abstract = request.form.get('abstract', '').strip()
+            open_access_only = request.form.get('open_access_only') == 'on'
+            show_all = request.form.get('results_count') == 'all'
+            
+            # Handle file upload if present
+            uploaded_file = request.files.get('paper_file')
+            paper_text = ''
+            
+            if uploaded_file and uploaded_file.filename != '':
+                try:
+                    # Store the file temporarily
+                    filename = secure_filename(uploaded_file.filename)
+                    file_path = os.path.join('/tmp', filename)
+                    uploaded_file.save(file_path)
+                    
+                    # Extract text from PDF if it's a PDF file
+                    if filename.lower().endswith('.pdf'):
+                        try:
+                            import PyPDF2
+                            with open(file_path, 'rb') as f:
+                                pdf_reader = PyPDF2.PdfReader(f)
+                                for page_num in range(len(pdf_reader.pages)):
+                                    page = pdf_reader.pages[page_num]
+                                    paper_text += page.extract_text() + ' '
+                        except ImportError:
+                            flash('PDF extraction library not available', 'warning')
+                        except Exception as e:
+                            flash(f'Error extracting text from PDF: {str(e)}', 'warning')
+                    else:
+                        # For non-PDF files, try reading as text
+                        try:
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                paper_text = f.read()
+                        except UnicodeDecodeError:
+                            flash('Unable to read the uploaded file. Please ensure it is a text file or PDF.', 'warning')
+                        except Exception as e:
+                            flash(f'Error reading file: {str(e)}', 'warning')
+                    
+                    # Clean up temporary file
+                    try:
+                        os.remove(file_path)
+                    except:
+                        pass
+                except Exception as e:
+                    flash(f'Error processing uploaded file: {str(e)}', 'warning')
+            
+            # Process paper content if we have at least one input source
+            if title or abstract or paper_text:
+                # Combine all available text
+                paper_content = f"{title} {abstract} {paper_text}".strip()
+                
+                # Helper function to extract keywords (for fallback matching)
+                def extract_keywords(text):
+                    # Convert to lowercase and remove punctuation
+                    text = text.lower()
+                    for char in string.punctuation:
+                        text = text.replace(char, ' ')
+                    
+                    # Split into words and remove common words
+                    words = text.split()
+                    stopwords = set(['and', 'the', 'is', 'in', 'to', 'of', 'a', 'for', 'with', 'on', 'as', 'by', 'that', 'this'])
+                    keywords = [word for word in words if word not in stopwords and len(word) > 2]
+                    
+                    # Find most common words
+                    word_counts = Counter(keywords)
+                    return [word for word, count in word_counts.most_common(20)]
+                
+                try:
+                    # Start measuring time for embedding generation
+                    start_time = time.time()
+                    
+                    # Import NLP libraries
+                    from sentence_transformers import SentenceTransformer
+                    
+                    # Helper functions for embeddings
+                    def get_text_embedding(text, max_length=5000):
+                        """Generate an embedding for the given text, with truncation for very long texts"""
+                        # Safety check for empty text
+                        if not text or len(text.strip()) == 0:
+                            return np.zeros(384)
+                        
+                        # Truncate very long texts to avoid issues
+                        if len(text) > max_length:
+                            text = text[:max_length]
+                        
+                        try:
+                            # Load model lazily (first time it's needed)
+                            global model
+                            if not 'model' in globals() or model is None:
+                                model = SentenceTransformer('all-MiniLM-L6-v2')
+                            
+                            # Generate embedding
+                            embedding = model.encode(text)
+                            return embedding
+                        except Exception as e:
+                            print(f"ERROR generating embedding: {str(e)}")
+                            traceback.print_exc()
+                            return np.zeros(384)
+                    
+                    def cosine_similarity(v1, v2):
+                        """Calculate cosine similarity between two vectors"""
+                        dot_product = np.dot(v1, v2)
+                        norm_v1 = np.linalg.norm(v1)
+                        norm_v2 = np.linalg.norm(v2)
+                        similarity = dot_product / (norm_v1 * norm_v2) if norm_v1 > 0 and norm_v2 > 0 else 0
+                        return similarity
+                    
+                    # Get paper embedding
+                    paper_embedding = get_text_embedding(paper_content)
+                    
+                    # Cache for journal embeddings
+                    journal_embeddings = {}
+                    
+                    # Compute similarities for all journals
+                    similarities = []
+                    
+                    for journal in journals:
+                        # Only include open access journals if the filter is on
+                        if open_access_only and not journal.get('open_access', False):
+                            continue
+                        
+                        # Get journal description for semantic matching
+                        journal_text = f"{journal.get('name', '')} {journal.get('description', '')} {journal.get('field', '')}"
+                        
+                        # Get embedding for journal (use cache if available)
+                        if journal['name'] in journal_embeddings:
+                            journal_embedding = journal_embeddings[journal['name']]
+                        else:
+                            journal_embedding = get_text_embedding(journal_text)
+                            journal_embeddings[journal['name']] = journal_embedding
+                        
+                        # Compute similarity
+                        similarity = cosine_similarity(paper_embedding, journal_embedding)
+                        
+                        # Add to results
+                        similarities.append((journal, similarity))
+                    
+                    # Sort by similarity score (highest first)
+                    similarities.sort(key=lambda x: x[1], reverse=True)
+                    
+                    # Process results with fallback mechanisms
+                    matching_journals = []
+                    threshold = 0.4  # Initial similarity threshold
+                    
+                    # First attempt: Use semantic similarity with default threshold
+                    matching_journals = [(j, s) for j, s in similarities if s >= threshold]
+                    
+                    # First fallback: Lower the threshold
+                    if not matching_journals:
+                        threshold = 0.2  # Lower threshold
+                        matching_journals = [(j, s) for j, s in similarities if s >= threshold]
+                    
+                    # Second fallback: Try keyword overlap matching
+                    if not matching_journals:
+                        # Extract keywords from the paper content
+                        paper_keywords = set(extract_keywords(paper_content))
+                        
+                        # Match based on keyword overlap
+                        keyword_matches = []
+                        for journal, _ in similarities:
+                            journal_text = f"{journal.get('name', '')} {journal.get('description', '')} {journal.get('field', '')}"
+                            journal_keywords = set(extract_keywords(journal_text))
+                            
+                            # Calculate overlap
+                            overlap = len(paper_keywords.intersection(journal_keywords)) / max(1, len(paper_keywords))
+                            if overlap > 0:
+                                keyword_matches.append((journal, overlap))
+                        
+                        keyword_matches.sort(key=lambda x: x[1], reverse=True)
+                        matching_journals = keyword_matches
+                    
+                    # Third fallback: Default to top journals by field similarity
+                    if not matching_journals:
+                        matching_journals = [(j, s) for j, s in similarities[:5]]
+                        flash('No close matches found based on your paper. Showing top journals in your field.', 'info')
+                    
+                    # Format journal data for template rendering with similarity scores as attributes
+                    formatted_journals = []
+                    for journal, similarity in matching_journals:
+                        # Create a copy to avoid modifying original data
+                        j = journal.copy()
+                        # Add similarity score as a property of the journal
+                        j['match_score'] = similarity
+                        # Ensure all required fields exist
+                        if 'name' not in j:
+                            j['name'] = 'Unknown Journal'
+                        if 'field' not in j:
+                            j['field'] = 'General'
+                        if 'open_access' not in j:
+                            j['open_access'] = False
+                        if 'submit_link' not in j:
+                            j['submit_link'] = '#'
+                        if 'aims_scope_link' not in j:
+                            j['aims_scope_link'] = '#'
+                        formatted_journals.append(j)
+                    matching_journals = formatted_journals
+                    
+                    # Limit results unless "show all" is selected
+                    if not show_all:
+                        matching_journals = matching_journals[:3]
+                    
+                    # Measure elapsed time
+                    elapsed_time = time.time() - start_time
+                    print(f"Journal matching completed in {elapsed_time:.2f}s")
+                    
+                except Exception as e:
+                    print(f"Error in semantic matching: {str(e)}")
+                    traceback.print_exc()
+                    flash(f"Error matching journals: {str(e)}", 'danger')
+            else:
+                flash('Please provide a paper title, abstract, or upload a file.', 'warning')
+        except Exception as e:
+            print(f"Error processing form: {str(e)}")
+            traceback.print_exc()
+            flash(f"Error processing your request: {str(e)}", 'danger')
+            submitted = False  # Don't show results on error
+    
+    # Update template variables with final results
+    template_vars.update({
+        'matching_journals': matching_journals,
+        'submitted': submitted
+    })
+    
+    # Render template with results
+    return render_template('citations/journal_finder.html', **template_vars)
+
 
 @citation_bp.route('/api/citation/<int:paper_id>')
 @login_required

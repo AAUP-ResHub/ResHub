@@ -42,6 +42,11 @@ pandas==2.1.0
 matplotlib==3.7.2
 beautifulsoup4==4.12.2
 psutil==5.9.5
+sentence-transformers==2.2.2
+huggingface-hub==0.16.4
+transformers==4.21.3
+tokenizers==0.12.1
+pybtex==0.25.1
 
 # S3 storage dependencies from teammate2
 boto3==1.28.38

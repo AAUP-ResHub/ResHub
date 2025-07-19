@@ -1,0 +1,356 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Journal Finder | ResHub
+{% endblock %}
+
+{% block head_extra %}
+<!-- Smart conditional pre-filling script -->
+<script>
+    // Using a variable from Jinja template - wrap with proper safeguards
+    let isPremium = false;
+    try {
+        isPremium = Boolean({{ is_premium|tojson|safe }});
+    } catch(e) {
+        console.error('Error parsing premium status:', e);
+    }
+    const urlParams = new URLSearchParams(window.location.search);
+    const source = urlParams.get('source');
+    const comingFromMyPapers = source === 'my-papers';
+    
+    console.log('Journal Finder page loaded');
+    console.log('Premium user:', isPremium);
+    console.log('Source:', source);
+    
+    // Function to clear all stored paper data
+    function clearAllStoredPaperData() {
+        console.log('Clearing all stored paper data');
+        sessionStorage.removeItem('journalFinderPaperData');
+        localStorage.removeItem('journalFinderPaperData');
+    }
+    
+    // Always clear localStorage data as we're now using sessionStorage exclusively
+    localStorage.removeItem('journalFinderPaperData');
+    
+    // For non-premium users, always clear all data
+    if (!isPremium) {
+        clearAllStoredPaperData();
+        console.log('Non-premium user: All form data cleared');
+    } 
+    // For premium users, check navigation source
+    else if (isPremium) {
+        // If not coming from My Papers page, clear any pre-filled data
+        if (!comingFromMyPapers) {
+            clearAllStoredPaperData();
+            console.log('Premium user direct navigation: Clearing pre-filled data');
+        } else {
+            console.log('Premium user from My Papers: Will pre-fill data');
+        }
+    }
+    
+    // Function to fill the form fields
+    function fillFormFields() {
+        // Only proceed for premium users coming from My Papers
+        if (!isPremium || !comingFromMyPapers) {
+            return; // Skip pre-filling
+        }
+        
+        try {
+            // Get data from sessionStorage (preferred)
+            const storedData = sessionStorage.getItem('journalFinderPaperData');
+            if (storedData) {
+                const paperData = JSON.parse(storedData);
+                
+                // Get the form fields
+                const titleInput = document.getElementById('title');
+                const abstractInput = document.getElementById('abstract');
+                const fileInput = document.getElementById('paper_file'); // For future use
+                
+                // Pre-fill the fields if they exist
+                if (titleInput && paperData.title) titleInput.value = paperData.title;
+                if (abstractInput && paperData.abstract) abstractInput.value = paperData.abstract;
+                // Note: File input can't be pre-filled directly for security reasons
+                
+                console.log('Form pre-filled for premium user from My Papers');
+                
+                // Show a small notification that data was pre-filled
+                setTimeout(() => {
+                    const formContainer = document.querySelector('form').parentElement;
+                    const notification = document.createElement('div');
+                    notification.className = 'alert alert-info alert-dismissible fade show mb-3';
+                    notification.innerHTML = `
+                        <i class="bi bi-info-circle me-2"></i>
+                        Form pre-filled with your paper data from My Papers.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    formContainer.insertBefore(notification, formContainer.querySelector('form'));
+                }, 300);
+            }
+        } catch (e) {
+            console.error('Error pre-filling form:', e);
+        }
+    }
+    
+    // Setup event handlers when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Try to fill form immediately
+        fillFormFields();
+        
+        // Preserve form values after submission using session storage
+        const form = document.querySelector('form');
+        if (form && isPremium && comingFromMyPapers) {
+            form.addEventListener('submit', function() {
+                try {
+                    // Save current form data before submission
+                    const title = document.getElementById('title').value;
+                    const abstract = document.getElementById('abstract').value;
+                    
+                    // Get existing data or create new object
+                    const paperDataString = sessionStorage.getItem('journalFinderPaperData');
+                    let paperData = paperDataString ? JSON.parse(paperDataString) : {};
+                    
+                    // Update with current values
+                    paperData.title = title;
+                    paperData.abstract = abstract;
+                    
+                    // Save back to session storage to persist across form submission
+                    sessionStorage.setItem('journalFinderPaperData', JSON.stringify(paperData));
+                    console.log('Form data preserved for submission');
+                } catch (e) {
+                    console.error('Error saving form data:', e);
+                }
+            });
+        }
+    });
+    
+    // Also try after a short delay as a backup for older browsers
+    setTimeout(fillFormFields, 500);
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Journal Finder</h4>
+                    <span class="badge bg-warning">Premium Feature</span>
+                </div>
+                <div class="card-body">
+                    {% if not is_premium %}
+                    <div class="alert alert-warning mb-4" role="alert">
+                        <h5 class="alert-heading"><i class="bi bi-lock-fill me-2"></i>Premium Feature</h5>
+                        <p>The Journal Finder is available exclusively for Premium users. Upgrade your account to access this feature and find the best journals for your research.</p>
+                        <hr>
+                        <a href="#" class="btn btn-warning btn-sm">
+                            <i class="bi bi-star-fill me-1"></i>Upgrade to Premium
+                        </a>
+                        <!-- Note: Replace '#' with actual upgrade URL when available -->
+                    </div>
+                    {% endif %}
+                    {% if not submitted %}
+                    <div class="text-center py-4 mb-4 bg-light rounded">
+                        <div class="display-6 text-muted mb-3">
+                            <i class="bi bi-journal-text"></i>
+                        </div>
+                        <p class="lead">Enter your paper's title and abstract to discover the most relevant journals.</p>
+                    </div>
+                    {% endif %}
+                    
+                    <form method="POST" action="{{ url_for('citation.journal_finder') }}" class="mb-4 {% if not is_premium %}opacity-75{% endif %}" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="title" class="form-label fw-bold">Paper Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="title" name="title" required placeholder="Enter the title of your research paper" value="{{ request.form.get('title', '') }}" {% if not is_premium %}disabled{% endif %}>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="abstract" class="form-label fw-bold">Abstract <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="abstract" name="abstract" rows="6" required placeholder="Enter your paper's abstract" {% if not is_premium %}disabled{% endif %}>{{ request.form.get('abstract', '') }}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="open_access_only" name="open_access_only" {% if request.form.get('open_access_only') == 'on' %}checked{% endif %} {% if not is_premium %}disabled{% endif %}>
+                                <label class="form-check-label" for="open_access_only">Open Access journals only</label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="paper_file" class="form-label fw-bold">Upload Paper (optional, for future use)</label>
+                            <input type="file" class="form-control" id="paper_file" name="paper_file" accept=".pdf,.docx,.txt" {% if not is_premium %}disabled{% endif %}>
+                            <div class="form-text">Upload your paper for more accurate journal matching (PDF format recommended).</div>
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg" {% if not is_premium %}disabled{% endif %}>
+                                <i class="bi bi-search me-2"></i> Find Best Journal
+                                {% if not is_premium %}<span class="badge bg-warning ms-2">Premium Only</span>{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                    
+                    {% if submitted %}
+                        {% if matching_journals %}
+                            <!-- Filter controls - Only shown with results -->
+                            <div id="result-filter-controls" class="mb-4 p-3 bg-light rounded">
+                                <div class="form-label fw-bold">Filter Results:</div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input filter-control" type="radio" name="client_filter" id="filter_top3" value="top3" checked>
+                                    <label class="form-check-label" for="filter_top3">Top 3 only</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input filter-control" type="radio" name="client_filter" id="filter_all" value="all">
+                                    <label class="form-check-label" for="filter_all">Show all matching journals</label>
+                                </div>
+                            </div>
+                            
+                            <h3 class="mt-4 mb-4">Recommended Journals <span id="results-count" class="badge bg-success">{{ matching_journals|length if matching_journals|length <= 3 else '3' }} of {{ matching_journals|length }} found</span></h3>
+                            <div class="table-responsive">
+                                <table class="table table-striped table-bordered">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Journal Name</th>
+                                            <th>Field</th>
+                                            <th>Similarity Score</th>
+                                            <th>Open Access</th>
+                                            <th class="text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="journals-tbody">
+                                        {% for journal in matching_journals %}
+                                        <tr class="journal-row {% if loop.index > 3 %}d-none extended-result{% endif %}" data-index="{{ loop.index }}">
+                                            <td>{{ journal.name }}</td>
+                                            <td>{{ journal.field }}</td>
+                                            <td>{{ '%.1f%%'|format(journal.match_score * 100) if journal.match_score <= 1 else journal.match_score }}</td>
+                                            <td>{% if journal.open_access %}Yes{% else %}No{% endif %}</td>
+                                            <td class="text-center">
+                                                <a href="{{ journal.submit_link }}" target="_blank" class="btn btn-sm btn-primary me-2">
+                                                    <i class="bi bi-upload"></i> Submit
+                                                </a>
+                                                <a href="{{ journal.aims_scope_link }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="bi bi-info-circle"></i> Aims & Scope
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning mt-5">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                No matching journals found. Try modifying your title or abstract to include more relevant keywords.
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{{ url_for('paper.my_papers') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-left me-2"></i>My Papers
+                        </a>
+                        <a href="{{ url_for('paper.index') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-journal-text me-2"></i>Browse All Papers
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Add custom JavaScript for Journal Finder filtering and pre-filling -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get filter radio buttons
+        const filterTop3 = document.getElementById('filter_top3');
+        const filterAll = document.getElementById('filter_all');
+        const resultsCount = document.getElementById('results-count');
+        const allRows = document.querySelectorAll('.journal-row');
+        const extendedRows = document.querySelectorAll('.extended-result');
+        const totalResults = allRows.length;
+
+        // Result filtering functionality
+        if (filterTop3 && filterAll) {
+            // Function to update displayed results
+            function updateDisplayedResults(showAll) {
+                extendedRows.forEach(row => {
+                    row.classList.toggle('d-none', !showAll);
+                });
+                
+                // Update the results counter
+                const visibleCount = showAll ? totalResults : Math.min(3, totalResults);
+                resultsCount.textContent = `${visibleCount} of ${totalResults} found`;
+            }
+            
+            // Add event listeners to filter controls
+            filterTop3.addEventListener('change', function() {
+                if (this.checked) updateDisplayedResults(false);
+            });
+            
+            filterAll.addEventListener('change', function() {
+                if (this.checked) updateDisplayedResults(true);
+            });
+            
+            // Initialize with top 3 filter selected by default
+            updateDisplayedResults(false);
+        }
+        
+        // Pre-fill form with paper data from localStorage
+        function prefillFormFromLocalStorage() {
+            console.log('Attempting to prefill form from localStorage');
+            
+            const titleInput = document.getElementById('title');
+            const abstractInput = document.getElementById('abstract');
+            const paperDataString = localStorage.getItem('journalFinderPaperData');
+            
+            console.log('Paper data in localStorage:', paperDataString);
+            
+            if (paperDataString && titleInput && abstractInput) {
+                try {
+                    const paperData = JSON.parse(paperDataString);
+                    console.log('Parsed paper data:', paperData);
+                    
+                    // Force immediate prefill on page load
+                    setTimeout(function() {
+                        if (paperData.title) {
+                            console.log('Setting title to:', paperData.title);
+                            titleInput.value = paperData.title;
+                        }
+                        
+                        if (paperData.abstract) {
+                            console.log('Setting abstract to:', paperData.abstract);
+                            abstractInput.value = paperData.abstract;
+                        }
+                        
+                        // Show a confirmation that data was loaded
+                        const journalFinderContainer = document.querySelector('.container');
+                        if (journalFinderContainer) {
+                            const alertDiv = document.createElement('div');
+                            alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                            alertDiv.innerHTML = `
+                                <strong>Success!</strong> Your paper data has been pre-filled.
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            `;
+                            journalFinderContainer.insertBefore(alertDiv, journalFinderContainer.firstChild);
+                        }
+                        
+                        console.log('Journal finder form pre-filled successfully');
+                    }, 100); // Short delay to ensure the DOM is fully loaded
+                } catch (e) {
+                    console.error('Error parsing stored paper data:', e);
+                    alert('Error loading paper data. Please try again.');
+                }
+            } else {
+                console.log('No saved paper data found in localStorage');
+            }
+        }
+        
+        // Call the prefill function
+        prefillFormFromLocalStorage();
+    });
+</script>
+{% endblock %}

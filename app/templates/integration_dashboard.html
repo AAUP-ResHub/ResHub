@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}ResHub Integration Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">ResHub Feature Integration Dashboard</h1>
+    
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Integration Status</h4>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">This dashboard allows you to test and verify the successful integration of features from both teammate1 and teammate2 codebases.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Notification Test Panel -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Notification System</h5>
+                </div>
+                <div class="card-body">
+                    <p>Test the integrated notification system that combines backend notification service with frontend UI components.</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notification Type:</label>
+                        <select class="form-select" id="notificationType">
+                            <option value="message">New Message</option>
+                            <option value="workspace">Workspace Invite</option>
+                            <option value="citation">Citation Alert</option>
+                            <option value="custom">Custom Notification</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn btn-primary" id="triggerNotification">
+                        Trigger Notification
+                    </button>
+                </div>
+                <div class="card-footer">
+                    <div id="notificationResult" class="small"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Journal Finder Test Panel -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Journal Finder</h5>
+                </div>
+                <div class="card-body">
+                    <p>Test the journal finder feature that uses sessionStorage to maintain data between pages.</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Paper Title:</label>
+                        <input type="text" class="form-control" id="paperTitle" value="Advances in AI Research">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Abstract:</label>
+                        <textarea class="form-control" id="paperAbstract" rows="3">This paper explores recent advances in artificial intelligence research, particularly focusing on natural language processing and computer vision.</textarea>
+                    </div>
+                    
+                    <button class="btn btn-primary" id="findJournalBtn">
+                        Find Best Journal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Semantic Graph Test Panel -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Semantic Graph</h5>
+                </div>
+                <div class="card-body">
+                    <p>Test the D3.js semantic graph visualization that shows academic knowledge connections.</p>
+                    
+                    <div id="semantic-graph-container" style="height: 300px; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <div class="text-center p-5">
+                            <button class="btn btn-primary" id="loadGraphBtn">
+                                Load Sample Graph
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Citation Test Panel -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Citation System</h5>
+                </div>
+                <div class="card-body">
+                    <p>Test the citation generation system with different citation styles.</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Citation Style:</label>
+                        <select class="form-select" id="citationStyle">
+                            <option value="apa">APA</option>
+                            <option value="mla">MLA</option>
+                            <option value="chicago">Chicago</option>
+                            <option value="harvard">Harvard</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn btn-primary" id="generateCitationBtn">
+                        Generate Citation
+                    </button>
+                    
+                    <div class="mt-3 p-3 bg-light rounded" id="citationResult">
+                        <em>Citation will appear here</em>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<!-- Load integrated scripts -->
+<script src="{{ url_for('static', filename='js_integrated/journal_finder.js') }}"></script>
+<script src="{{ url_for('static', filename='js_integrated/semantic_graph.js') }}"></script>
+<script src="{{ url_for('static', filename='js_integrated/citation.js') }}"></script>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    // Notification trigger handler
+    document.getElementById('triggerNotification').addEventListener('click', function() {
+        const type = document.getElementById('notificationType').value;
+        const resultElement = document.getElementById('notificationResult');
+        
+        resultElement.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status"></div> Creating notification...';
+        
+        fetch('/integration/trigger-notification', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ type: type })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                resultElement.innerHTML = `<div class="alert alert-success py-2 mb-0">Notification created: "${data.message}"</div>`;
+                
+                // If notification system is initialized, refresh notifications
+                if (typeof window.reshubNotifications !== 'undefined') {
+                    window.reshubNotifications.fetchNotifications();
+                }
+            } else {
+                resultElement.innerHTML = `<div class="alert alert-danger py-2 mb-0">Error: ${data.error}</div>`;
+            }
+        })
+        .catch(error => {
+            resultElement.innerHTML = `<div class="alert alert-danger py-2 mb-0">Error: ${error.message}</div>`;
+        });
+    });
+    
+    // Journal finder button handler
+    document.getElementById('findJournalBtn').addEventListener('click', function() {
+        const paperTitle = document.getElementById('paperTitle').value;
+        const paperAbstract = document.getElementById('paperAbstract').value;
+        
+        // Store paper data in sessionStorage
+        const paperData = {
+            title: paperTitle,
+            abstract: paperAbstract,
+            authors: "Integration Test Authors"
+        };
+        
+        sessionStorage.setItem('paper_data', JSON.stringify(paperData));
+        
+        // Redirect to journal finder page (for testing purposes, we'll just show an alert)
+        alert(`Journal finder would navigate to the journal finder page with data for: "${paperTitle}"`);
+    });
+    
+    // Sample graph data
+    const sampleGraphData = {
+        nodes: [
+            { id: 1, name: "AI Research", type: "concept", similarity: 1.0 },
+            { id: 2, name: "Machine Learning", type: "concept", similarity: 0.9 },
+            { id: 3, name: "Deep Learning", type: "concept", similarity: 0.8 },
+            { id: 4, name: "Computer Vision", type: "concept", similarity: 0.7 },
+            { id: 5, name: "Natural Language Processing", type: "concept", similarity: 0.85 },
+            { id: 6, name: "John Smith", type: "author", similarity: 0.65 },
+            { id: 7, name: "Neural Networks Explained", type: "paper", similarity: 0.75 }
+        ],
+        links: [
+            { source: 1, target: 2, value: 0.9 },
+            { source: 2, target: 3, value: 0.8 },
+            { source: 1, target: 4, value: 0.7 },
+            { source: 1, target: 5, value: 0.85 },
+            { source: 6, target: 7, value: 0.8 },
+            { source: 3, target: 7, value: 0.75 },
+            { source: 5, target: 7, value: 0.6 }
+        ]
+    };
+    
+    // Load graph button handler
+    document.getElementById('loadGraphBtn').addEventListener('click', function() {
+        const graphContainer = document.getElementById('semantic-graph-container');
+        graphContainer.innerHTML = ''; // Clear container
+        
+        // Initialize the semantic graph with sample data
+        if (typeof initializeGraph === 'function') {
+            initializeGraph(graphContainer, sampleGraphData, csrfToken);
+        } else {
+            graphContainer.innerHTML = '<div class="alert alert-danger">Semantic graph initialization function not found</div>';
+        }
+    });
+    
+    // Citation generation handler
+    document.getElementById('generateCitationBtn').addEventListener('click', function() {
+        const style = document.getElementById('citationStyle').value;
+        const resultElement = document.getElementById('citationResult');
+        
+        // Sample paper data
+        const paperData = {
+            title: "Advances in AI Research: A Comprehensive Survey",
+            authors: [
+                { first_name: "John", last_name: "Smith" },
+                { first_name: "Jane", last_name: "Doe" }
+            ],
+            journal: "Journal of Artificial Intelligence",
+            year: 2023,
+            volume: 15,
+            issue: 4,
+            pages: "112-128",
+            doi: "10.1234/ai.2023.1234"
+        };
+        
+        // Generate formatted citation
+        let citation = '';
+        
+        switch (style) {
+            case 'apa':
+                citation = 'Smith, J., & Doe, J. (2023). Advances in AI Research: A Comprehensive Survey. <em>Journal of Artificial Intelligence, 15</em>(4), 112-128. https://doi.org/10.1234/ai.2023.1234';
+                break;
+            case 'mla':
+                citation = 'Smith, John, and Jane Doe. "Advances in AI Research: A Comprehensive Survey." <em>Journal of Artificial Intelligence</em>, vol. 15, no. 4, 2023, pp. 112-128. DOI: 10.1234/ai.2023.1234';
+                break;
+            case 'chicago':
+                citation = 'Smith, John, and Jane Doe. 2023. "Advances in AI Research: A Comprehensive Survey." <em>Journal of Artificial Intelligence</em> 15 (4): 112-128. https://doi.org/10.1234/ai.2023.1234.';
+                break;
+            case 'harvard':
+                citation = 'Smith, J. and Doe, J., 2023. Advances in AI Research: A Comprehensive Survey. <em>Journal of Artificial Intelligence</em>, 15(4), pp.112-128. Available at: https://doi.org/10.1234/ai.2023.1234';
+                break;
+        }
+        
+        resultElement.innerHTML = citation;
+    });
+});
+</script>
+{% endblock %}

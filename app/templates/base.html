@@ -8,6 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
     <!-- Bootstrap 5 CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <!-- Bootstrap Icons CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     
     <style>
         /* Workspace styling */
@@ -61,6 +63,15 @@
     </script>
     
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+    
+
+    
+    {% if current_user.is_authenticated %}
+        <!-- Import notification scripts for authenticated users -->
+        {% from 'components/notification_dropdown.html' import notification_scripts %}
+        {{ notification_scripts() }}
+    {% endif %}
+    
     {% block scripts_extra %}{% endblock %}
 </body>
 </html>

@@ -1,0 +1,40 @@
+{% macro notification_dropdown() %}
+<!-- Notification Dropdown Component -->
+<div class="dropdown" id="notification-dropdown">
+    <button class="btn btn-outline-secondary dropdown-toggle position-relative" type="button" id="notificationDropdownButton" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="fas fa-bell"></i>
+        <span class="badge bg-danger notification-badge position-absolute top-0 start-100 translate-middle" id="notification-count">0</span>
+    </button>
+    <div class="dropdown-menu dropdown-menu-end notification-menu p-0" aria-labelledby="notificationDropdownButton" id="notification-container" style="width: 350px; max-height: 400px; overflow-y: auto;">
+        <div class="notification-header d-flex justify-content-between align-items-center p-2 border-bottom">
+            <span class="notification-title fw-bold">Notifications</span>
+            <button class="btn btn-sm text-primary mark-all-read" id="mark-all-read">Mark all read</button>
+        </div>
+        <div class="notification-body" id="notification-list">
+            <div class="text-center p-3 text-muted">No notifications</div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast container for popup notifications -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container">
+    <!-- Toast notifications will be dynamically added here -->
+</div>
+{% endmacro %}
+
+{% macro notification_scripts() %}
+<!-- Notification JavaScript -->
+<script src="{{ url_for('static', filename='js_integrated/notifications.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize notification system if elements exist
+        if (document.getElementById('notification-dropdown')) {
+            if (typeof window.reshubNotifications !== 'undefined') {
+                window.reshubNotifications.init();
+            } else {
+                console.error('Notification system not loaded properly');
+            }
+        }
+    });
+</script>
+{% endmacro %}

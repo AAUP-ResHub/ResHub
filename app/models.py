@@ -92,6 +92,37 @@ class RegisteredUser(db.Model):
     workspace_memberships = db.relationship('WorkspaceMember', backref='member_user', lazy='dynamic', foreign_keys='WorkspaceMember.user_id')
     uploaded_files = db.relationship('WorkspaceFile', backref='uploader_user', lazy='dynamic', foreign_keys='WorkspaceFile.uploader_id')
 
+    # Property alias for research_interests (stored in profile_data JSON)
+    @property
+    def research_interests(self):
+        """Get research interests from profile_data JSON"""
+        if not self.profile_data:
+            return None
+        try:
+            import json
+            data = json.loads(self.profile_data)
+            if isinstance(data, dict):  # Safety check for malformed JSON
+                return data.get("research_interests")
+            return None
+        except (json.JSONDecodeError, TypeError):
+            return None
+    
+    @research_interests.setter
+    def research_interests(self, value):
+        """Set research interests in profile_data JSON"""
+        import json
+        data = {}
+        if self.profile_data:
+            try:
+                data = json.loads(self.profile_data) or {}
+                if not isinstance(data, dict):
+                    data = {}  # Reset if not a dict
+            except (json.JSONDecodeError, TypeError):
+                data = {}  # Reset if corrupted
+        
+        data["research_interests"] = value or ""
+        self.profile_data = json.dumps(data)
+
     def __repr__(self):
         return f'<RegisteredUser ID: {self.registered_user_id}, User: {self.user.username if self.user else "N/A"}>'
 
@@ -191,21 +222,6 @@ class ForumPost(db.Model):
     def __repr__(self):
         return f'<ForumPost {self.post_id} by UserID {self.author_registered_user_id}>'
 
-class Notification(db.Model):
-    __tablename__ = 'notifications'
-    notification_id = db.Column(db.Integer, primary_key=True)
-    message = db.Column(db.Text, nullable=False)
-    is_read = db.Column(db.Boolean, default=False)
-    sent_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    recipient_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)
-    actor_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=True)
-    action = db.Column(db.String(50), nullable=True)
-    object_type = db.Column(db.String(50), nullable=True)
-    object_id = db.Column(db.Integer, nullable=True)
-    
-    def __repr__(self):
-        return f'<Notification {self.notification_id} to user {self.recipient_registered_user_id}>'
-
 # --- Service and Feature Related Entities ---
 class JournalFinderServiceConfig(db.Model):
     __tablename__ = 'journal_finder_service_configs'
@@ -299,6 +315,37 @@ class Citation(db.Model):
     
     def __repr__(self):
         return f'<Citation {self.id}: {self.paper_id} - {self.style.value}>'
+
+class Message(db.Model):
+    __tablename__ = 'messages'
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    subject = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+    
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
+    recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_messages')
+    
+    def __repr__(self):
+        return f'<Message {self.id}: {self.subject}>'
+
+class Notification(db.Model):
+    __tablename__ = 'notifications'
+    notification_id = db.Column(db.Integer, primary_key=True)
+    recipient_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    sent_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+    actor_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=True)
+    action = db.Column(db.String(50), nullable=True)
+    object_type = db.Column(db.String(50), nullable=True)
+    object_id = db.Column(db.Integer, nullable=True)
+    
+    def __repr__(self):
+        return f'<Notification {self.notification_id}: {self.action}>'
 
 class AIDataset(db.Model):
     __tablename__ = 'ai_datasets'

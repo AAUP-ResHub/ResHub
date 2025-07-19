@@ -70,6 +70,14 @@ def index():
         flash('User profile not found', 'danger')
         return redirect(url_for('main.index'))
     
+    # PREMIUM GATE: Check if user is premium
+    from app.models import PremiumUser
+    is_premium = PremiumUser.query.filter_by(registered_user_id=user_profile.registered_user_id).first() is not None
+    
+    if not is_premium:
+        # Redirect non-premium users to premium required page
+        return render_template('workspaces/premium_required.html')
+    
     # Handle DELETE request from the delete form
     if request.method == 'POST':
         current_app.logger.info(f"POST request received: {request.form}")
@@ -112,13 +120,22 @@ def index():
 @login_required
 def create():
     """Create a new workspace."""
+    # Get the current user's registered user profile
+    user_profile = RegisteredUser.query.filter_by(user_id=current_user.user_id).first()
+    
+    if not user_profile:
+        flash('User profile not found', 'danger')
+        return redirect(url_for('main.index'))
+    
+    # PREMIUM GATE: Check if user is premium
+    from app.models import PremiumUser
+    is_premium = PremiumUser.query.filter_by(registered_user_id=user_profile.registered_user_id).first() is not None
+    
+    if not is_premium:
+        # Redirect non-premium users to premium required page
+        return render_template('workspaces/premium_required.html')
+    
     if request.method == 'POST':
-        # Get the current user's registered user profile
-        user_profile = RegisteredUser.query.filter_by(user_id=current_user.user_id).first()
-        
-        if not user_profile:
-            flash('User profile not found', 'danger')
-            return redirect(url_for('main.index'))
         
         # Create new workspace
         name = request.form.get('name', '').strip()
@@ -168,6 +185,14 @@ def workspace_detail(workspace_id):
     reg_user = RegisteredUser.query.filter_by(user_id=current_user.user_id).first()
     if not reg_user:
         abort(403)
+    
+    # PREMIUM GATE: Check if user is premium
+    from app.models import PremiumUser
+    is_premium = PremiumUser.query.filter_by(registered_user_id=reg_user.registered_user_id).first() is not None
+    
+    if not is_premium:
+        # Redirect non-premium users to premium required page
+        return render_template('workspaces/premium_required.html')
 
     workspace = Workspace.query.get_or_404(workspace_id)
     

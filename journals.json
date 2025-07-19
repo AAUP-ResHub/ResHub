@@ -1,0 +1,242 @@
+[
+  {
+    "name": "Nature",
+    "field": "Multidisciplinary",
+    "description": "A weekly international journal publishing the finest peer-reviewed research in all fields of science and technology.",
+    "open_access": false,
+    "submit_link": "https://www.nature.com/nature/for-authors",
+    "aims_scope_link": "https://www.nature.com/nature/about"
+  },
+  {
+    "name": "Science",
+    "field": "Multidisciplinary",
+    "description": "The world's leading outlet for scientific news, commentary, and cutting-edge research.",
+    "open_access": false,
+    "submit_link": "https://www.science.org/content/page/science-information-authors",
+    "aims_scope_link": "https://www.science.org/content/page/mission-and-scope"
+  },
+  {
+    "name": "Journal of Machine Learning Research",
+    "field": "Computer Science",
+    "description": "A journal dedicated to machine learning research, especially papers on novel algorithms and applications.",
+    "open_access": true,
+    "submit_link": "http://jmlr.org/author-info.html",
+    "aims_scope_link": "http://jmlr.org/"
+  },
+  {
+    "name": "PLOS ONE",
+    "field": "Multidisciplinary",
+    "description": "An inclusive journal publishing rigorous research regardless of perceived impact.",
+    "open_access": true,
+    "submit_link": "https://journals.plos.org/plosone/s/submit-now",
+    "aims_scope_link": "https://journals.plos.org/plosone/s/journal-information"
+  },
+  {
+    "name": "IEEE Transactions on Neural Networks and Learning Systems",
+    "field": "Computer Science",
+    "description": "A journal focused on the science and engineering of neural networks and related learning systems.",
+    "open_access": false,
+    "submit_link": "https://mc.manuscriptcentral.com/tnnls",
+    "aims_scope_link": "https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=5962385"
+  },
+  {
+    "name": "Cell",
+    "field": "Biology",
+    "description": "A journal of exceptional research in life science and related fields.",
+    "open_access": false,
+    "submit_link": "https://www.cell.com/submission-guidelines",
+    "aims_scope_link": "https://www.cell.com/cell/aims"
+  },
+  {
+    "name": "The New England Journal of Medicine",
+    "field": "Medicine",
+    "description": "A weekly medical journal publishing original research and review articles in biomedical science and clinical practice.",
+    "open_access": false,
+    "submit_link": "https://www.nejm.org/author-center/submit-manuscript",
+    "aims_scope_link": "https://www.nejm.org/about-nejm/about-nejm"
+  },
+  {
+    "name": "Physical Review Letters",
+    "field": "Physics",
+    "description": "A journal for short, high-impact reports of significant fundamental research in all fields of physics.",
+    "open_access": false,
+    "submit_link": "https://journals.aps.org/prl/authors",
+    "aims_scope_link": "https://journals.aps.org/prl/about"
+  },
+  {
+    "name": "Neuron",
+    "field": "Neuroscience",
+    "description": "A journal focused on neuroscience research, covering molecular, cellular, developmental, and systems neuroscience.",
+    "open_access": false,
+    "submit_link": "https://www.cell.com/neuron/authors",
+    "aims_scope_link": "https://www.cell.com/neuron/aims"
+  },
+  {
+    "name": "Journal of the American Chemical Society",
+    "field": "Chemistry",
+    "description": "A weekly journal publishing significant original research across all fields of chemistry.",
+    "open_access": false,
+    "submit_link": "https://pubs.acs.org/page/jacsat/submission/index.html",
+    "aims_scope_link": "https://pubs.acs.org/page/jacsat/about.html"
+  },
+  {
+    "name": "BMC Bioinformatics",
+    "field": "Bioinformatics",
+    "description": "An open access journal dedicated to bioinformatics and computational biology research.",
+    "open_access": true,
+    "submit_link": "https://bmcbioinformatics.biomedcentral.com/submission-guidelines",
+    "aims_scope_link": "https://bmcbioinformatics.biomedcentral.com/about"
+  },
+  {
+    "name": "Nature Machine Intelligence",
+    "field": "Computer Science",
+    "description": "A journal publishing research on artificial intelligence, machine learning, and robotics with significant impact across disciplines.",
+    "open_access": false,
+    "submit_link": "https://www.nature.com/natmachintell/submit",
+    "aims_scope_link": "https://www.nature.com/natmachintell/about"
+  },
+  {
+    "name": "npj Digital Medicine",
+    "field": "Medicine",
+    "description": "An open access journal dedicated to digital technologies in medicine, healthcare, and public health.",
+    "open_access": true,
+    "submit_link": "https://www.nature.com/npjdigitalmed/submit",
+    "aims_scope_link": "https://www.nature.com/npjdigitalmed/about"
+  },
+  {
+    "name": "PeerJ Computer Science",
+    "field": "Computer Science",
+    "description": "An open access journal covering all subject areas in computer science.",
+    "open_access": true,
+    "submit_link": "https://peerj.com/computer-science/authors/",
+    "aims_scope_link": "https://peerj.com/computer-science/scope/"
+  },
+  {
+    "name": "Nature Biotechnology",
+    "field": "Biotechnology",
+    "description": "A monthly journal publishing research on biological technologies with commercial applications.",
+    "open_access": false,
+    "submit_link": "https://www.nature.com/nbt/submission-guidelines",
+    "aims_scope_link": "https://www.nature.com/nbt/about"
+  },
+  {
+    "name": "IEEE Transactions on Pattern Analysis and Machine Intelligence",
+    "field": "Computer Science",
+    "description": "A journal covering research in pattern analysis and machine intelligence.",
+    "open_access": false,
+    "submit_link": "https://mc.manuscriptcentral.com/tpami-cs",
+    "aims_scope_link": "https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=34"
+  },
+  {
+    "name": "Genome Biology",
+    "field": "Biology",
+    "description": "A journal covering all aspects of genomics research, including computational approaches.",
+    "open_access": true,
+    "submit_link": "https://genomebiology.biomedcentral.com/submission-guidelines",
+    "aims_scope_link": "https://genomebiology.biomedcentral.com/about"
+  },
+  {
+    "name": "Artificial Intelligence",
+    "field": "Computer Science",
+    "description": "A journal focused on artificial intelligence and its applications.",
+    "open_access": false,
+    "submit_link": "https://www.elsevier.com/journals/artificial-intelligence/0004-3702/guide-for-authors",
+    "aims_scope_link": "https://www.journals.elsevier.com/artificial-intelligence"
+  },
+  {
+    "name": "Information Fusion",
+    "field": "Computer Science",
+    "description": "A journal covering theory and application of information fusion techniques.",
+    "open_access": false,
+    "submit_link": "https://www.elsevier.com/journals/information-fusion/1566-2535/guide-for-authors",
+    "aims_scope_link": "https://www.journals.elsevier.com/information-fusion"
+  },
+  {
+    "name": "PNAS",
+    "field": "Multidisciplinary",
+    "description": "Proceedings of the National Academy of Sciences, publishing cutting-edge research, science news, commentaries, reviews, and more.",
+    "open_access": false,
+    "submit_link": "https://www.pnas.org/page/authors/submitting",
+    "aims_scope_link": "https://www.pnas.org/page/about"
+  },
+  {
+    "name": "Journal of Cheminformatics",
+    "field": "Chemistry",
+    "description": "An open access journal publishing research on all aspects of cheminformatics and molecular modeling.",
+    "open_access": true,
+    "submit_link": "https://jcheminf.biomedcentral.com/submission-guidelines",
+    "aims_scope_link": "https://jcheminf.biomedcentral.com/about"
+  },
+  {
+    "name": "JMIR Medical Informatics",
+    "field": "Medicine",
+    "description": "A journal focused on clinical informatics, clinical research informatics, and health IT evaluation.",
+    "open_access": true,
+    "submit_link": "https://medinform.jmir.org/for-authors/",
+    "aims_scope_link": "https://medinform.jmir.org/aims-and-scope"
+  },
+  {
+    "name": "Applied Soft Computing",
+    "field": "Computer Science",
+    "description": "A journal focused on the integration of soft computing techniques and applications in engineering and science.",
+    "open_access": false,
+    "submit_link": "https://www.elsevier.com/journals/applied-soft-computing/1568-4946/guide-for-authors",
+    "aims_scope_link": "https://www.journals.elsevier.com/applied-soft-computing"
+  },
+  {
+    "name": "IEEE Transactions on Medical Imaging",
+    "field": "Medicine",
+    "description": "A journal covering all aspects of medical and biomedical imaging.",
+    "open_access": false,
+    "submit_link": "https://ieee-tmi.org/authors.html",
+    "aims_scope_link": "https://ieee-tmi.org/about.html"
+  },
+  {
+    "name": "eLife",
+    "field": "Biology",
+    "description": "A non-profit open access journal for life sciences and biomedical research.",
+    "open_access": true,
+    "submit_link": "https://submit.elifesciences.org/html/elife_author_instructions.html",
+    "aims_scope_link": "https://elifesciences.org/about"
+  },
+  {
+    "name": "Journal of Big Data",
+    "field": "Computer Science",
+    "description": "A journal covering all aspects of big data research, including technologies, analytics, and applications.",
+    "open_access": true,
+    "submit_link": "https://journalofbigdata.springeropen.com/submission-guidelines",
+    "aims_scope_link": "https://journalofbigdata.springeropen.com/about"
+  },
+  {
+    "name": "Scientific Reports",
+    "field": "Multidisciplinary",
+    "description": "An open access journal publishing original research from all areas of the natural and clinical sciences.",
+    "open_access": true,
+    "submit_link": "https://www.nature.com/srep/author-instructions",
+    "aims_scope_link": "https://www.nature.com/srep/about"
+  },
+  {
+    "name": "Journal of Clinical Medicine",
+    "field": "Medicine",
+    "description": "An open access journal providing an advanced forum for clinical studies.",
+    "open_access": true,
+    "submit_link": "https://www.mdpi.com/journal/jcm/submission_guidelines",
+    "aims_scope_link": "https://www.mdpi.com/journal/jcm/about"
+  },
+  {
+    "name": "Bioinformatics",
+    "field": "Bioinformatics",
+    "description": "A journal publishing research on genome bioinformatics and computational biology.",
+    "open_access": false,
+    "submit_link": "https://academic.oup.com/bioinformatics/pages/submission_online",
+    "aims_scope_link": "https://academic.oup.com/bioinformatics/pages/About"
+  },
+  {
+    "name": "Environmental Science & Technology",
+    "field": "Environmental Science",
+    "description": "A journal focused on environmental science and technology research.",
+    "open_access": false,
+    "submit_link": "https://pubs.acs.org/page/esthag/submission/index.html",
+    "aims_scope_link": "https://pubs.acs.org/page/esthag/about.html"
+  }
+]

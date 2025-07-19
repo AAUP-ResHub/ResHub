@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Notification System Test{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>ResHub Notification System Test</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <p><strong>This page tests the notification system integration.</strong></p>
+                        <p>The integrated notification system combines teammate1's notification service with teammate2's frontend architecture.</p>
+                    </div>
+                    
+                    <h5 class="mt-4">Notification Dropdown</h5>
+                    <div class="mb-4">
+                        <div class="dropdown" id="notification-dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="notificationDropdownButton" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-bell"></i> Notifications 
+                                <span class="badge bg-danger notification-badge" id="notification-count">0</span>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-end notification-menu p-0" aria-labelledby="notificationDropdownButton" id="notification-container">
+                                <div class="notification-header">
+                                    <span class="notification-title">Notifications</span>
+                                    <button class="btn btn-sm text-primary mark-all-read" id="mark-all-read">Mark all read</button>
+                                </div>
+                                <div class="notification-body" id="notification-list">
+                                    <div class="text-center p-3 text-muted">No notifications</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h5 class="mt-4">Test Controls</h5>
+                    <div class="mb-4">
+                        <button id="load-test-notifications" class="btn btn-primary me-2">
+                            Load Test Notifications
+                        </button>
+                        <button id="create-test-notification" class="btn btn-success me-2">
+                            Create New Notification
+                        </button>
+                        <button id="show-toast" class="btn btn-info me-2">
+                            Show Toast Notification
+                        </button>
+                    </div>
+                    
+                    <h5 class="mt-4">Test Results</h5>
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <pre id="test-results" class="mb-0" style="max-height: 300px; overflow-y: auto;">Notification system test results will appear here...</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.notification-menu {
+    width: 350px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid #e9ecef;
+}
+.notification-item {
+    padding: 10px 15px;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+}
+.notification-item:hover {
+    background-color: #f8f9fa;
+}
+.notification-item.unread {
+    background-color: #e9f5ff;
+}
+.notification-item .notification-time {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+.notification-action {
+    margin-left: auto;
+    font-size: 0.85rem;
+}
+.notification-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1050;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js_integrated/notifications.js') }}"></script>
+<script src="{{ url_for('static', filename='js_integrated/notification_tests.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const testResults = document.getElementById('test-results');
+    
+    function logResult(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        testResults.innerHTML += `[${timestamp}] ${message}\n`;
+        testResults.scrollTop = testResults.scrollHeight;
+    }
+    
+    // Initialize the notification system
+    if (typeof window.reshubNotifications !== 'undefined') {
+        window.reshubNotifications.init();
+        logResult('✅ Notification system initialized successfully');
+    } else {
+        logResult('❌ Error: Notification system not found!');
+    }
+    
+    // Button handlers for tests
+    document.getElementById('load-test-notifications').addEventListener('click', function() {
+        if (typeof testNotificationSystem === 'function') {
+            const result = testNotificationSystem();
+            logResult(result ? '✅ Test notifications loaded successfully' : '❌ Failed to load test notifications');
+        } else {
+            logResult('❌ Error: testNotificationSystem function not found');
+        }
+    });
+    
+    document.getElementById('create-test-notification').addEventListener('click', function() {
+        const newNotification = {
+            id: 'dynamic-test-notification-' + Date.now(),
+            message: 'This is a dynamically created test notification at ' + new Date().toLocaleTimeString(),
+            action: 'test_action',
+            sent_date: new Date().toISOString(),
+            is_read: false,
+            actor: {
+                username: 'tester',
+                display_name: 'Dynamic Test User'
+            },
+            object_type: 'test',
+            object_id: Math.floor(Math.random() * 1000)
+        };
+        
+        if (typeof window.reshubNotifications !== 'undefined') {
+            window.reshubNotifications.addNewNotifications([newNotification]);
+            window.reshubNotifications.updateNotificationCount(
+                parseInt(document.getElementById('notification-count').textContent || '0') + 1
+            );
+            logResult('✅ Created new test notification');
+        } else {
+            logResult('❌ Error: Notification system not found!');
+        }
+    });
+    
+    document.getElementById('show-toast').addEventListener('click', function() {
+        const toastNotification = {
+            id: 'toast-test-notification-' + Date.now(),
+            message: 'This is a test toast notification at ' + new Date().toLocaleTimeString(),
+            action: 'test_action',
+            sent_date: new Date().toISOString(),
+            is_read: false,
+            actor: {
+                username: 'toaster',
+                display_name: 'Toast Tester'
+            }
+        };
+        
+        if (typeof window.reshubNotifications !== 'undefined') {
+            window.reshubNotifications.showToastNotification(toastNotification);
+            logResult('✅ Showed toast notification');
+        } else {
+            logResult('❌ Error: Notification system not found!');
+        }
+    });
+});
+</script>
+{% endblock %}
