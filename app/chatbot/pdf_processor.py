@@ -11,7 +11,7 @@ from PyPDF2 import PdfReader
 from PyPDF2.errors import PdfReadError
 from flask import current_app
 from app import db
-from app.chatbot.models import IndexedDocument
+from app.models import IndexedDocument
 
 class PDFProcessor:
     """

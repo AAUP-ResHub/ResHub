@@ -30,7 +30,7 @@ def health_check():
     try:
         from flask import current_app
         from app.chatbot.vector_store import get_vector_store_client
-        from app.chatbot.models import IndexedDocument
+        from app.models import IndexedDocument
         
         # Get database count
         db_count = IndexedDocument.query.count()

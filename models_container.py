@@ -2,7 +2,6 @@ from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 import enum
-import uuid
 
 # Import db from extensions to avoid circular imports
 from app.extensions import db
@@ -369,119 +368,56 @@ class RecommendationEngineConfig(db.Model):
     def __repr__(self):
         return f'<RecommendationEngineConfig {self.engine_id}: {self.algorithm_name}>'
 
-# --- Chatbot System Models ---
-class ChatSession(db.Model):
-    """Model to store chat sessions to maintain context across interactions."""
-    __tablename__ = 'chat_sessions'
-    session_id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    last_active = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-    title = db.Column(db.String(255), nullable=False, default="New Research Session")
-    is_active = db.Column(db.Boolean, nullable=False, default=True)
-    
-    # Relationships
-    registered_user = db.relationship('RegisteredUser', backref=db.backref('chat_sessions', lazy='dynamic'))
-    chat_logs = db.relationship('ChatLog', backref='session', lazy='dynamic', cascade="all, delete-orphan")
-    
-    def __repr__(self):
-        return f"<ChatSession {self.session_id}: {self.title}>"
 
-class ChatLog(db.Model):
-    """Model to store chat logs for the research assistant."""
-    __tablename__ = 'chat_logs'
-    log_id = db.Column(db.Integer, primary_key=True)
-    registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)
-    session_id = db.Column(db.String(36), db.ForeignKey('chat_sessions.session_id'), nullable=False)
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    user_prompt = db.Column(db.Text, nullable=False)
-    ai_response = db.Column(db.Text)  # Store the complete AI response
-    retrieved_ids = db.Column(db.Text)  # JSON string of retrieved document IDs
-    token_in = db.Column(db.Integer, default=0)
-    token_out = db.Column(db.Integer, default=0)
-    latency_ms = db.Column(db.Integer, default=0)
-    hit_rate = db.Column(db.Float, default=0.0)
-    thumbs_up_down = db.Column(db.Integer, nullable=True)  # 1 for up, -1 for down, null for no feedback
-    
-    # Relationships
-    registered_user = db.relationship('RegisteredUser', backref=db.backref('chat_logs', lazy='dynamic'))
-    feedback = db.relationship('FeedbackDetail', backref='chat_log', lazy='dynamic', cascade="all, delete-orphan")
-    
-    def get_retrieved_ids(self):
-        """Convert stored JSON string to Python list."""
-        if self.retrieved_ids:
-            try:
-                import json
-                return json.loads(self.retrieved_ids)
-            except (ValueError, TypeError):
-                return []
-        return []
-    
-    def set_retrieved_ids(self, ids_list):
-        """Convert Python list to JSON string for storage."""
-        if ids_list:
-            import json
-            self.retrieved_ids = json.dumps(ids_list)
-        else:
-            self.retrieved_ids = None
-    
-    def __repr__(self):
-        return f"<ChatLog {self.log_id}: {self.user_prompt[:30] if self.user_prompt else 'N/A'}...>"
+        #------------------------------------------------------------------------------
+# --- FTS5 Support for ResearchPaper (Manual Migration Required) ---
+# The following SQL DDL commands need to be executed within a new Alembic migration script
+# to create the FTS5 virtual table and synchronization triggers.
 
-class FeedbackDetail(db.Model):
-    """Model to store detailed feedback on chat responses."""
-    __tablename__ = 'feedback_details'
-    feedback_id = db.Column(db.Integer, primary_key=True)
-    chat_log_id = db.Column(db.Integer, db.ForeignKey('chat_logs.log_id'), nullable=False)
-    registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    
-    # Feedback metrics (1-5 scale)
-    relevance_rating = db.Column(db.Integer, nullable=True)
-    accuracy_rating = db.Column(db.Integer, nullable=True)
-    completeness_rating = db.Column(db.Integer, nullable=True)
-    overall_rating = db.Column(db.Integer, nullable=True)
-    feedback_text = db.Column(db.Text, nullable=True)  # Optional text feedback
-    
-    # Relationships
-    registered_user = db.relationship('RegisteredUser', backref=db.backref('chat_feedback', lazy='dynamic'))
-    
-    def __repr__(self):
-        return f"<FeedbackDetail {self.feedback_id} for ChatLog {self.chat_log_id}>"
-    
-class IndexedDocument(db.Model):
-    """Model to store metadata for indexed documents in vector database."""
-    __tablename__ = 'indexed_documents'
-    document_id = db.Column(db.String(64), primary_key=True)  # SHA-256 hash
-    title = db.Column(db.String(255), nullable=False)
-    authors = db.Column(db.Text)  # JSON string of author names
-    year = db.Column(db.Integer, nullable=True)
-    source = db.Column(db.String(50), nullable=False)  # "arxiv", "semantic_scholar", "core"
-    source_id = db.Column(db.String(100), nullable=True)  # Original ID in the source
-    file_path = db.Column(db.String(255), nullable=True)  # Path to stored PDF file
-    indexed_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    chunk_count = db.Column(db.Integer, nullable=False, default=0)
-    is_ocr_needed = db.Column(db.Boolean, nullable=False, default=False)
-    abstract = db.Column(db.Text, nullable=True)  # Paper abstract
-    
-    def get_authors(self):
-        """Convert stored JSON string to Python list."""
-        if self.authors:
-            try:
-                import json
-                return json.loads(self.authors)
-            except (ValueError, TypeError):
-                return []
-        return []
-    
-    def set_authors(self, authors_list):
-        """Convert Python list to JSON string for storage."""
-        if authors_list:
-            import json
-            self.authors = json.dumps(authors_list)
-        else:
-            self.authors = None
-        
-    def __repr__(self):
-        title_preview = self.title[:30] if self.title else 'Untitled'
-        return f"<IndexedDocument {title_preview}...>"
+"""
+# In a new Alembic migration script's upgrade() function:
+# from alembic import op
+# import sqlalchemy as sa  # Not strictly needed for op.execute
+
+def upgrade():
+    # Create the FTS5 virtual table for research papers
+    op.execute('''
+        CREATE VIRTUAL TABLE research_papers_fts USING fts5(
+            paper_id UNINDEXED,      -- Stores the original research_papers.id, not indexed by FTS
+            title,                   -- Column for full-text search on title
+            abstract,                -- Column for full-text search on abstract
+            tokenize = 'porter unicode61' -- Porter stemmer with Unicode support
+        );
+    ''')
+
+    # Database trigger: After a new ResearchPaper is inserted, add its data to the FTS table
+    op.execute('''
+        CREATE TRIGGER research_papers_ai AFTER INSERT ON research_papers BEGIN
+            INSERT INTO research_papers_fts (paper_id, title, abstract)
+            VALUES (new.id, new.title, new.abstract);
+        END;
+    ''')
+
+    # Database trigger: After a ResearchPaper is deleted, remove its entry from the FTS table
+    op.execute('''
+        CREATE TRIGGER research_papers_ad AFTER DELETE ON research_papers BEGIN
+            DELETE FROM research_papers_fts WHERE paper_id = old.id;
+        END;
+    ''')
+
+    # Database trigger: After a ResearchPaper is updated, update its entry in the FTS table
+    op.execute('''
+        CREATE TRIGGER research_papers_au AFTER UPDATE OF title, abstract ON research_papers BEGIN
+            UPDATE research_papers_fts SET 
+                title = new.title, 
+                abstract = new.abstract
+            WHERE paper_id = old.id; 
+        END;
+    ''')
+
+def downgrade():
+    op.execute('DROP TRIGGER IF EXISTS research_papers_au;')  # Drop in reverse order of creation
+    op.execute('DROP TRIGGER IF EXISTS research_papers_ad;')
+    op.execute('DROP TRIGGER IF EXISTS research_papers_ai;')
+    op.execute('DROP TABLE IF EXISTS research_papers_fts;')
+"""

@@ -1,8 +1,8 @@
-from flask import render_template, request, jsonify, current_app, url_for, flash, Response, session
+from flask import render_template, request, jsonify, current_app, url_for, flash, Response, session, redirect
 from flask_login import login_required, current_user
 from app import db
 from app.chatbot import chatbot_bp
-from app.chatbot.models import ChatLog, IndexedDocument, ChatSession, FeedbackDetail
+from app.models import ChatLog, IndexedDocument, ChatSession, FeedbackDetail
 from app.chatbot.vector_store import VectorStore
 from app.chatbot.answer_generator import AnswerGenerator
 from app.chatbot.pdf_processor import PDFProcessor
@@ -35,17 +35,24 @@ answer_generator = AnswerGenerator()
 @login_required
 def index():
     """Render the chatbot interface."""
+    # Get current user's registered profile
+    if not current_user.registered_profile:
+        flash('User profile not found. Please complete your registration.', 'error')
+        return redirect(url_for('main.dashboard'))
+    
+    registered_user_id = current_user.registered_profile.registered_user_id
+    
     # Get active session or create a new one
-    active_session = ChatSession.query.filter_by(user_id=current_user.user_id, is_active=True).first()
+    active_session = ChatSession.query.filter_by(registered_user_id=registered_user_id, is_active=True).first()
     
     if not active_session:
-        active_session = ChatSession(user_id=current_user.user_id)
+        active_session = ChatSession(registered_user_id=registered_user_id)
         db.session.add(active_session)
         db.session.commit()
     
     # Get chat history for this session
     chat_history = ChatLog.query.filter_by(
-        user_id=current_user.user_id, 
+        registered_user_id=registered_user_id, 
         session_id=active_session.session_id
     ).order_by(ChatLog.timestamp.desc()).limit(10).all()
     
@@ -99,6 +106,12 @@ def chat_api():
     start_time = time.time()
     
     try:
+        # Get current user's registered profile
+        if not current_user.registered_profile:
+            return jsonify({"error": "User profile not found. Please complete your registration."}), 400
+        
+        registered_user_id = current_user.registered_profile.registered_user_id
+        
         # Get or create session for the current user
         current_app.logger.info(f"[SESSION DEBUG] Request with session_id={session_id}")
         
@@ -108,20 +121,25 @@ def chat_api():
             if not active_session:
                 current_app.logger.error(f"[SESSION DEBUG] Session {session_id} not found in database")
                 return jsonify({"error": "Session not found"}), 404
-            elif active_session.user_id != current_user.user_id:  # Fix: user_id -> user_id
-                current_app.logger.error(f"[SESSION DEBUG] Session {session_id} belongs to user {active_session.user_id}, not {current_user.user_id}")
+            elif active_session.registered_user_id != registered_user_id:
+                current_app.logger.error(f"[SESSION DEBUG] Session {session_id} belongs to user {active_session.registered_user_id}, not {registered_user_id}")
                 return jsonify({"error": "Access denied"}), 403
-            current_app.logger.info(f"[SESSION DEBUG] Using existing session {session_id} for user {current_user.user_id}")
+            current_app.logger.info(f"[SESSION DEBUG] Using existing session {session_id} for user {registered_user_id}")
         else:
-            # Create a new session
-            title = "Chat session " + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            active_session = ChatSession(user_id=current_user.user_id, title=title)  # Fix: id -> user_id
-            db.session.add(active_session)
-            db.session.commit()
+            # Create a new session with proper error handling
+            try:
+                title = "Chat session " + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                active_session = ChatSession(registered_user_id=registered_user_id, title=title)
+                db.session.add(active_session)
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()  # Clear the failed transaction
+                current_app.logger.error(f"[SESSION DEBUG] Failed to create ChatSession: {str(e)}")
+                return jsonify({"error": "Failed to create chat session. Please try again."}), 500
             
             # Get the newly created session's ID
             session_id = active_session.session_id
-            current_app.logger.info(f"[SESSION DEBUG] Created new session {session_id} for user {current_user.user_id}, committed to DB")
+            current_app.logger.info(f"[SESSION DEBUG] Created new session {session_id} for user {registered_user_id}, committed to DB")
             
             # Verify session exists in database after commit
             verification = ChatSession.query.get(session_id)
@@ -172,7 +190,7 @@ def chat_api():
         latency_ms = int((end_time - start_time) * 1000)
         
         chat_log = ChatLog(
-            user_id=current_user.user_id,
+            registered_user_id=registered_user_id,
             session_id=session_id,
             user_prompt=user_prompt,
             ai_response=json.dumps(result),  # Store the full response
@@ -315,8 +333,14 @@ def chat_api_test():
 def get_chat_sessions():
     """Get all chat sessions for the current user."""
     try:
+        # Get current user's registered profile
+        if not current_user.registered_profile:
+            return jsonify({"error": "User profile not found"}), 404
+        
+        registered_user_id = current_user.registered_profile.registered_user_id
+        
         # Get all sessions for the current user
-        sessions = ChatSession.query.filter_by(user_id=current_user.user_id)\
+        sessions = ChatSession.query.filter_by(registered_user_id=registered_user_id)\
             .order_by(ChatSession.last_active.desc()).all()
         
         result = [{
@@ -401,10 +425,16 @@ def get_chat_history():
         return jsonify({"error": "Session ID is required"}), 400
         
     try:
+        # Get current user's registered profile
+        if not current_user.registered_profile:
+            return jsonify({"error": "User profile not found"}), 404
+        
+        registered_user_id = current_user.registered_profile.registered_user_id
+        
         # Verify session belongs to current user
         session = ChatSession.query.filter_by(
             session_id=session_id,
-            user_id=current_user.user_id
+            registered_user_id=registered_user_id
         ).first()
         
         if not session:
