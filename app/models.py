@@ -73,14 +73,14 @@ class Admin(db.Model):
 class RegisteredUser(db.Model):
     __tablename__ = 'registered_users'
     registered_user_id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False, unique=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False, unique=True)
     first_name = db.Column(db.String(100))
     last_name = db.Column(db.String(100))
     profile_data = db.Column(db.Text)  # Semantic graph or personal info
     research_stats = db.Column(db.Text)  # Additional user analytics
 
     # Relationship to User (one-to-one)
-    user = db.relationship('User', backref=db.backref('registered_profile', uselist=False))
+    user = db.relationship('User', backref=db.backref('registered_profile', uselist=False, cascade="all, delete-orphan"))
 
     # Relationships to other entities
     forum_posts_authored = db.relationship('ForumPost', backref='author', lazy='dynamic', foreign_keys='ForumPost.author_registered_user_id')
@@ -187,8 +187,8 @@ class Notification(db.Model):
     message = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, default=False)
     sent_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    recipient_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=False)
-    actor_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id'), nullable=True)
+    recipient_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id', ondelete='CASCADE'), nullable=False)
+    actor_registered_user_id = db.Column(db.Integer, db.ForeignKey('registered_users.registered_user_id', ondelete='CASCADE'), nullable=True)
     action = db.Column(db.String(50), nullable=True)
     object_type = db.Column(db.String(50), nullable=True)
     object_id = db.Column(db.Integer, nullable=True)
@@ -297,13 +297,12 @@ class RecommendationEngineConfig(db.Model):
     def __repr__(self):
         return f'<RecommendationEngineConfig {self.engine_id}: {self.algorithm_name}>'
 
-
-        #------------------------------------------------------------------------------
+"""
+# COMMENTED OUT FOR MIGRATION FIX - UNCOMMENT LATER
 # --- FTS5 Support for ResearchPaper (Manual Migration Required) ---
 # The following SQL DDL commands need to be executed within a new Alembic migration script
 # to create the FTS5 virtual table and synchronization triggers.
 
-"""
 # In a new Alembic migration script's upgrade() function:
 # from alembic import op
 # import sqlalchemy as sa  # Not strictly needed for op.execute

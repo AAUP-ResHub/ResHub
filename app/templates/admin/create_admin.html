@@ -19,7 +19,7 @@
     <div class="card">
         <div class="card-body">
             <!-- Add novalidate to prevent browser validation which can trigger autofill -->
-            <form method="POST" autocomplete="off" novalidate>
+            <form method="POST" action="{{ url_for('create_admin.register_admin') }}" autocomplete="off" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 
                 <!-- Add a honeypot field to trick browsers' autofill -->
