@@ -32,3 +32,18 @@ def get_recommendations():
             })
 
     return jsonify(recommended_users_data)
+
+@api_bp.route('/feature-flags', methods=['GET'])
+def get_feature_flags():
+    """Returns feature flags for the chatbot frontend."""
+    feature_flags = {
+        'USE_NEW_CHATBOT_UI': True,  # Enable new chatbot interface
+        'new_chatbot_frontend': True,  # Alias for the frontend check
+        'ENABLE_ADVANCED_SEARCH': False,
+        'ENABLE_EXPORT_CHAT': False,
+        'ENABLE_SESSION_MANAGEMENT': True,
+        'ENABLE_CHAT_HISTORY': True,
+        'ENABLE_FEEDBACK': True
+    }
+    
+    return jsonify(feature_flags)

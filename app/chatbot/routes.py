@@ -30,6 +30,13 @@ vector_store = VectorStore()
 pdf_processor = PDFProcessor()
 answer_generator = AnswerGenerator()
 
+# Test page for new frontend components
+@chatbot_bp.route('/test')
+@login_required 
+def test_frontend():
+    """Render the test page for new chatbot frontend components."""
+    return render_template('chatbot_test.html')
+
 # Main chatbot interface
 @chatbot_bp.route('/')
 @login_required
@@ -327,11 +334,52 @@ def chat_api_test():
             "details": str(e)
         }), 500
 
-# API endpoint for chat sessions
-@chatbot_bp.route('/api/chat/sessions', methods=['GET'])
+# API endpoint for updating a specific session
+@chatbot_bp.route('/api/chat/sessions/<session_id>', methods=['PATCH'])
 @login_required
-def get_chat_sessions():
-    """Get all chat sessions for the current user."""
+def update_session_api(session_id):
+    """Update a specific chat session."""
+    try:
+        if not current_user.registered_profile:
+            return jsonify({"error": "User profile not found"}), 404
+        
+        registered_user_id = current_user.registered_profile.registered_user_id
+        
+        # Verify session exists and belongs to user
+        session = ChatSession.query.filter_by(
+            session_id=session_id,
+            registered_user_id=registered_user_id
+        ).first()
+        
+        if not session:
+            return jsonify({"error": "Session not found"}), 404
+        
+        data = request.json or {}
+        
+        # Update title if provided
+        if 'title' in data:
+            session.title = data['title']
+            db.session.commit()
+            
+            return jsonify({
+                "session_id": session.session_id,
+                "title": session.title,
+                "created_at": session.created_at.isoformat(),
+                "last_active": session.last_active.isoformat(),
+                "is_active": session.is_active
+            })
+        
+        return jsonify({"error": "No update data provided"}), 400
+        
+    except Exception as e:
+        current_app.logger.error(f"Update Session API error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# API endpoint for chat sessions
+@chatbot_bp.route('/api/chat/sessions', methods=['GET', 'POST'])
+@login_required
+def chat_sessions_api():
+    """Handle chat sessions - GET to retrieve, POST to create."""
     try:
         # Get current user's registered profile
         if not current_user.registered_profile:
@@ -339,19 +387,42 @@ def get_chat_sessions():
         
         registered_user_id = current_user.registered_profile.registered_user_id
         
-        # Get all sessions for the current user
-        sessions = ChatSession.query.filter_by(registered_user_id=registered_user_id)\
-            .order_by(ChatSession.last_active.desc()).all()
+        if request.method == 'POST':
+            # Create a new session
+            data = request.json or {}
+            title = data.get('title', f"Chat session {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            
+            try:
+                new_session = ChatSession(registered_user_id=registered_user_id, title=title)
+                db.session.add(new_session)
+                db.session.commit()
+                
+                return jsonify({
+                    "session_id": new_session.session_id,
+                    "title": new_session.title,
+                    "created_at": new_session.created_at.isoformat(),
+                    "last_active": new_session.last_active.isoformat(),
+                    "is_active": new_session.is_active
+                })
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Failed to create ChatSession: {str(e)}")
+                return jsonify({"error": "Failed to create chat session. Please try again."}), 500
         
-        result = [{
-            "session_id": session.session_id,
-            "title": session.title,
-            "created_at": session.created_at.isoformat(),
-            "last_active": session.last_active.isoformat(),
-            "is_active": session.is_active
-        } for session in sessions]
-        
-        return jsonify({"sessions": result})
+        else:
+            # GET: Return all sessions for the current user
+            sessions = ChatSession.query.filter_by(registered_user_id=registered_user_id)\
+                .order_by(ChatSession.last_active.desc()).all()
+            
+            result = [{
+                "session_id": session.session_id,
+                "title": session.title,
+                "created_at": session.created_at.isoformat(),
+                "last_active": session.last_active.isoformat(),
+                "is_active": session.is_active
+            } for session in sessions]
+            
+            return jsonify({"sessions": result})
         
     except Exception as e:
         current_app.logger.error(f"Chat Sessions API error: {str(e)}")
@@ -443,36 +514,58 @@ def get_chat_history():
         # Get chat logs for this session
         chat_logs = ChatLog.query.filter_by(
             session_id=session_id
-        ).order_by(ChatLog.timestamp.desc()).all()
+        ).order_by(ChatLog.timestamp.asc()).all()
         
-        results = []
+        # Convert chat logs to conversational message pairs for frontend compatibility
+        messages = []
         for chat in chat_logs:
-            # Handle different response formats (JSON or plain text)
+            # Handle different AI response formats (JSON or plain text)
             try:
                 # Try to parse as JSON first
                 if chat.ai_response and chat.ai_response.startswith('{'): 
                     resp_data = json.loads(chat.ai_response)
                     answer_text = resp_data.get('answer', chat.ai_response)
+                    citations = resp_data.get('citations', '')
+                    extras = resp_data.get('extras', '')
                 else:
                     answer_text = chat.ai_response
+                    citations = ''
+                    extras = ''
             except Exception:
                 # Fall back to using raw response
-                answer_text = chat.ai_response
+                answer_text = chat.ai_response or 'No response available'
+                citations = ''
+                extras = ''
                 
-            # Create uniform result object
-            chat_item = {
-                "log_id": chat.log_id,
-                "chat_id": chat.log_id,  # Add ID alias for frontend compatibility
+            # Create user message
+            user_message = {
+                "id": f"{chat.log_id}_user",
+                "type": "user",
+                "content": chat.user_prompt,
                 "prompt": chat.user_prompt,
-                "answer": answer_text,  # Extract proper answer text
-                "response": answer_text,  # Alternative field name for compatibility
+                "timestamp": chat.timestamp.isoformat(),
+                "session_id": chat.session_id
+            }
+            messages.append(user_message)
+            
+            # Create AI message
+            ai_message = {
+                "id": f"{chat.log_id}_ai",
+                "type": "ai",
+                "content": answer_text,
+                "answer": answer_text,
+                "response": answer_text,
+                "citations": citations,
+                "extras": extras,
                 "timestamp": chat.timestamp.isoformat(),
                 "session_id": chat.session_id,
+                "chat_id": chat.log_id,
+                "log_id": chat.log_id,
                 "feedback": "positive" if chat.thumbs_up_down == 1 else "negative" if chat.thumbs_up_down == -1 else None
             }
-            results.append(chat_item)
+            messages.append(ai_message)
         
-        return jsonify({"chats": results})
+        return jsonify({"messages": messages, "chats": messages})
         
     except Exception as e:
         current_app.logger.error(f"Chat History API error: {str(e)}")

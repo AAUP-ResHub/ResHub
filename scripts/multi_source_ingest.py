@@ -48,7 +48,6 @@ logger = logging.getLogger(__name__)
 
 # Import app and components after path setup
 from app import create_app
-from app.config import Config
 from app.chatbot.api_fetchers import (
     SemanticScholarFetcher, CoreFetcher, ArxivFetcher,
     semantic_scholar_quota_manager, core_quota_manager
@@ -446,21 +445,14 @@ def run_ingestion(args):
     if prev_state:
         processed_combinations = set(prev_state.get("processed_combinations", []))
     
-    # Create Flask app with minimal configuration
+    # Create Flask app with ResHub's standard configuration
     try:
-        # Try with normal config first
-        app = create_app(config_class=Config)
-        logger.info("Created app with standard configuration")
+        # Use ResHub's normal app creation method
+        app = create_app()
+        logger.info("Created app with ResHub standard configuration")
     except Exception as e:
-        logger.warning(f"Failed to create app with standard config: {str(e)}")
-        # Fall back to a minimal configuration
-        class MinimalConfig:
-            SECRET_KEY = 'minimal-config'
-            SQLALCHEMY_DATABASE_URI = None
-            SQLALCHEMY_TRACK_MODIFICATIONS = False
-        
-        app = create_app(config_class=MinimalConfig)
-        logger.info("Created app with minimal configuration")
+        logger.error(f"Failed to create app: {str(e)}")
+        raise
     
     # Initialize components that don't need app context
     logger.info("Initializing components...")

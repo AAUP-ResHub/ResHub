@@ -885,15 +885,21 @@ class VectorStore:
                                 # Let outer exception handler deal with the failure
                 
                 all_results = []
-                for point in search_result:
+                print(f"[DEBUG] Processing {len(search_result)} raw search results from Qdrant")
+                for i, point in enumerate(search_result):
                     try:
                         # Safely extract payload data with fallbacks
                         payload = getattr(point, 'payload', {}) or {}
+                        print(f"[DEBUG] Point {i+1}: payload keys = {list(payload.keys())}")
                         
                         # Extract metadata safely with defaults
                         doc_id = payload.get("document_id", "")
                         text = payload.get("text", "No text available")
                         title = payload.get("title", "Untitled Document")
+                        
+                        # Get score and log it
+                        score = getattr(point, 'score', 0.0) or 0.0
+                        print(f"[DEBUG] Point {i+1}: score={score}, title='{title[:50]}...', text_length={len(text)}")
                         
                         # Create a metadata structure compatible with the rest of the app
                         metadata = {
@@ -924,8 +930,10 @@ class VectorStore:
                 # Apply year filtering to results if specified
                 results = []
                 filtered_out_count = 0
+                print(f"[DEBUG] Starting year filtering on {len(all_results)} processed results")
+                print(f"[DEBUG] Year filter active: {year_filter}, start_year: {start_year}, end_year: {end_year}")
                 
-                for result in all_results:
+                for i, result in enumerate(all_results):
                     # Check if we need to apply year filtering
                     if year_filter and start_year is not None and end_year is not None:
                         # Get year from metadata
@@ -953,14 +961,21 @@ class VectorStore:
                     logging.info(f"[VectorStore] [request_id: {request_id}] Year filter {start_year}-{end_year}: {filtered_out_count} results filtered out, {len(results)} remaining")
                     print(f"Year filter {start_year}-{end_year}: {filtered_out_count} results filtered out, {len(results)} remaining")
                 
-                print(f"Found {len(results)} results from Qdrant")
+                print(f"[DEBUG] FINAL RESULT COUNT: {len(results)} results from Qdrant after all processing")
+                if len(results) > 0:
+                    print(f"[DEBUG] Sample result scores: {[r['score'] for r in results[:3]]}")
+                    print(f"[DEBUG] Sample result titles: {[r['metadata']['title'][:30] for r in results[:3]]}")
+                
                 if not results:
-                    print(f"No results found in collection '{self.collection_name}' for query: {query[:50]}...")
+                    print(f"[DEBUG] CRITICAL: No results found in collection '{self.collection_name}' for query: {query[:50]}...")
+                    print(f"[DEBUG] Original search returned {len(search_result) if 'search_result' in locals() else 'UNKNOWN'} results")
+                    print(f"[DEBUG] After processing: {len(all_results) if 'all_results' in locals() else 'UNKNOWN'} results")
                     logging.warning(f"[VectorStore] [request_id: {request_id}] No results found in Qdrant for query, falling back to memory store")
                     # We'll let the fallback memory store handling take over instead of returning early
                     # This way if we have anything in memory_store it will be used
                     pass
                 else:
+                    print(f"[DEBUG] SUCCESS: Returning {len(results)} results to caller")
                     return results
                 
             except Exception as e:
